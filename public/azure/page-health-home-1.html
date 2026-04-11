@@ -1,0 +1,438 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Azures BootStrap</title>
+<link rel="stylesheet" type="text/css" href="styles/bootstrap.css">
+<link rel="stylesheet" type="text/css" href="styles/style.css">
+<link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800,900|Roboto:300,300i,400,400i,500,500i,700,700i,900,900i&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" type="text/css" href="fonts/css/fontawesome-all.min.css">    
+<link rel="manifest" href="_manifest.json" data-pwa-version="set_in_manifest_and_pwa_js">
+<link rel="apple-touch-icon" sizes="180x180" href="app/icons/icon-192x192.png">
+</head>
+	
+<body class="theme-light">
+	
+<div id="preloader"><div class="spinner-border color-highlight" role="status"></div></div>
+	
+<div id="page">
+	
+	<!-- header and footer bar go here-->
+	<div class="header header-fixed header-auto-show header-logo-app">
+		<a href="#" data-back-button class="header-title header-subtitle">Back to Pages</a>
+		<a href="#" data-back-button class="header-icon header-icon-1"><i class="fas fa-arrow-left"></i></a>
+		<a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-dark"><i class="fas fa-sun"></i></a>
+		<a href="#" data-toggle-theme class="header-icon header-icon-2 show-on-theme-light"><i class="fas fa-moon"></i></a>
+		<a href="#" data-menu="menu-highlights" class="header-icon header-icon-3"><i class="fas fa-brush"></i></a>
+		<a href="#" data-menu="menu-main" class="header-icon header-icon-4"><i class="fas fa-bars"></i></a>
+	</div>
+	<div id="footer-bar" class="footer-bar-5">
+		<a href="index-components.html"><i data-feather="heart" data-feather-line="1" data-feather-size="21" data-feather-color="red-dark" data-feather-bg="red-fade-light"></i><span>Features</span></a>
+		<a href="index-media.html"><i data-feather="image" data-feather-line="1" data-feather-size="21" data-feather-color="green-dark" data-feather-bg="green-fade-light"></i><span>Media</span></a>
+		<a href="index.html"><i data-feather="home" data-feather-line="1" data-feather-size="21" data-feather-color="blue-dark" data-feather-bg="blue-fade-light"></i><span>Home</span></a>
+		<a href="index-pages.html" class="active-nav"><i data-feather="file" data-feather-line="1" data-feather-size="21" data-feather-color="brown-dark" data-feather-bg="brown-fade-light"></i><span>Pages</span></a>
+		<a href="index-settings.html"><i data-feather="settings" data-feather-line="1" data-feather-size="21" data-feather-color="dark-dark" data-feather-bg="gray-fade-light"></i><span>Settings</span></a>
+	</div>
+	
+	<div class="page-content">
+		
+		<div class="page-title page-title-small">
+			<h2><a href="#" data-back-button><i class="fa fa-arrow-left"></i></a>Health Home 1</h2>
+			<a href="#" data-menu="menu-main" class="bg-fade-highlight-light shadow-xl preload-img" data-src="images/avatars/5s.png"></a>
+		</div>
+		<div class="card header-card shape-rounded" data-card-height="150">
+			<div class="card-overlay bg-highlight opacity-95"></div>
+			<div class="card-overlay dark-mode-tint"></div>
+			<div class="card-bg preload-img" data-src="images/pictures/20s.jpg"></div>
+		</div>
+
+        <div class="card card-style" data-card-height="400" style="background-image:url(images/medical/2.jpg)">
+            <div class="card-bottom p-3">
+                <h1 class="color-white">Serving your Health <br> Needs is our Priority</h1>
+                <p class="color-white mb-0 opacity-50">
+                    Your feedback is always important. You asked us for a health care package, we always listen.
+                </p>
+            </div>
+            <div class="card-overlay bg-gradient"></div>
+        </div>
+		
+		<div class="search-box search-header bg-theme card-style me-3 ms-3">
+			<i class="fa fa-search"></i>
+			<input type="text" class="border-0" placeholder="Locate your Department" data-search>
+			<a href="#" class="clear-search disabled mt-0"><i class="fa fa-times color-red-dark"></i></a>
+		</div>
+		
+		<div class="search-results disabled-search-list card card-style shadow-l">
+			<div class="content my-0 list-group list-custom-small">
+				<a href="#" data-filter-item data-filter-name="all pediatrics"  class="search-result-list">
+					<i class="fa font-14 fa-child color-blue-dark"></i>
+					<span>Pediatrics</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all neurology"  class="search-result-list">
+					<i class="fa font-14 fa-brain color-dark-light"></i>
+					<span>Neurology</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all pulmonary"  class="search-result-list">
+					<i class="fa font-14 fa-lungs color-brown-dark"></i>
+					<span>Pulmonary</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all orthopedy"  class="search-result-list">
+					<i class="fa font-14 fa-bone color-gray-dark"></i>
+					<span>Orthopedy</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all orthodontics"  class="search-result-list">
+					<i class="fa font-14 fa-tooth color-gray-dark"></i>
+					<span>Orthodontist</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all ophtalmology"  class="search-result-list">
+					<i class="fa font-14 fa-eye color-green-dark"></i>
+					<span>Ophthalmology</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+				<a href="#" data-filter-item data-filter-name="all cardiovascular"  class="search-result-list">
+					<i class="fa font-14 fa-heart color-red-dark"></i>
+					<span>Cardiovascular</span>
+					<i class="fa fa-angle-right"></i>
+				</a>
+			</div>
+			<div class="search-no-results disabled">
+				<div class="content">
+					<h3>Specialist Needed?</h3>
+					<p class="opacity-70 color-theme">There's nothing matching the description you're looking for, try a different keyword or call our office to book a specialist meeting</p>
+					<a href="#" class="btn btn-m btn-full bg-blue-dark text-uppercase rounded-sm font-700">Call Now</a>
+				</div>
+			</div>
+		</div>
+		
+		<div class="card card-style">
+			<div class="content mb-0">
+				<a href="#">
+					<div class="d-flex mb-3">
+						<div class="align-self-center">
+							<h5 class="font-500 font-15 pb-1">Breakthrough MRI Technique Discovered by Dr. John</h5>
+							<span class="badge text-uppercase px-2 py-1 bg-green-dark">Discovery</span>
+							<span class="color-theme font-11 ps-2 opacity-50">25 Minutes Ago</span>
+						</div>
+						<div class="align-self-center ms-auto">
+							<img src="images/pictures/15s.jpg" class="rounded-m ms-3" width="90">
+						</div>
+					</div>
+				</a>
+				<div class="divider mb-3"></div>
+				<a href="#">
+					<div class="d-flex mb-3">
+						<div class="align-self-center">
+							<h5 class="font-500 font-15 pb-1">Apple Watch to get Glucose Monitoring</h5>
+							<span class="badge text-uppercase px-2 py-1 bg-blue-dark">Technology</span>
+							<span class="color-theme font-11 ps-2 opacity-50">25 Minutes Ago</span>
+						</div>
+						<div class="align-self-center ms-auto">
+							<img src="images/pictures/28s.jpg" class="rounded-m ms-3" width="90">
+						</div>
+					</div>
+				</a>
+				<div class="divider mb-3"></div>
+				<a href="#">
+					<div class="d-flex mb-3">
+						<div class="align-self-center">
+							<h5 class="font-500 font-15 pb-1">Laptops can now Monitor your eyesight strain and health.</h5>
+							<span class="badge text-uppercase px-2 py-1 bg-red-dark">Trends</span>
+							<span class="color-theme font-11 ps-2 opacity-50">25 Minutes Ago</span>
+						</div>
+						<div class="align-self-center ms-auto">
+							<img src="images/pictures/21s.jpg" class="rounded-m ms-3" width="90">
+						</div>
+					</div>
+				</a>
+			</div>
+		</div>
+		
+		<div class="card card-style" style="background-image:url(images/medical/4.jpg)" data-card-height="500" style="z-index:1">
+			<div class="card-top p-3 pb-5">
+				<h1 class="color-white font-24 mb-0">Specialist Care</h1>
+				<p class="color-white mb-0 opacity-70">
+					Find out more and schedule appointments based on your required medical department.
+				</p>
+			</div>
+			<div class="card-bottom">
+				<div class="card card-style mx-3" style="z-index:0;">
+					<div class="content mb-0 mt-0">
+						<div class="list-group list-custom-small">
+							<a href="#">
+								<i class="fa font-14 fa-brain color-dark-light"></i>
+								<span>Neurology</span>
+								<i class="fa fa-angle-right"></i>
+							</a>
+							<a href="#">
+								<i class="fa font-14 fa-lungs color-brown-dark"></i>
+								<span>Pulmonary</span>
+								<i class="fa fa-angle-right"></i>
+							</a>
+							<a href="#">
+								<i class="fa font-14 fa-tooth color-gray-dark"></i>
+								<span>Orthodontist</span>
+								<i class="fa fa-angle-right"></i>
+							</a>
+							<a href="#">
+								<i class="fa font-14 fa-eye color-green-dark"></i>
+								<span>Ophthalmology</span>
+								<i class="fa fa-angle-right"></i>
+							</a>
+							<a href="#">
+								<i class="fa font-14 fa-heart color-red-dark"></i>
+								<span>Cardiovascular</span>
+								<i class="fa fa-angle-right"></i>
+							</a>
+						</div>
+						<a href="page-health-services.html" class="btn btn-m btn-full bg-blue-dark font-700 text-uppercase mb-4 mt-4 rounded-sm">View all Departments</a>
+					</div>
+				</div>
+			</div>
+			<div class="card-overlay bg-black opacity-70"></div>
+		</div>
+
+
+        <div class="card card-style">
+            <div class="content">
+                <h2>Our Services</h2>
+                <p class="mb-3">
+                    Lorem ipsum dolor sit amet, consectetur adipis icing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                </p>
+				<a href="#" data-menu="menu-appointment">
+					<div class="card card-style bg-blue-light mb-3 mx-0">
+						<div class="d-flex">
+							<div class="ps-2 ms-2 align-self-center">
+								<h4 class="pt-4 color-white">Appointments</h4>
+								<p class="font-12 color-white mt-n2 mb-4 opacity-70">Schedule it on the right day for you.</p>
+							</div>
+							<div class="ms-auto me-3 align-self-center">
+								<i class="fa fa-calendar-alt color-white fa-2x mt-4 mb-4"></i>
+							</div>
+						</div>
+					</div>
+				</a>
+				<a href="#" data-menu="menu-emergency">
+					<div class="card card-style mb-3 bg-blue-light mx-0">
+						<div class="d-flex">
+							<div class="ps-2 ms-2 align-self-center">
+								<h4 class="pt-4 color-white">Emergencies</h4>
+								<p class="font-12 color-white mt-n2 mb-4 opacity-70">Is it urgent? Tap here immediately.</p>
+							</div>
+							<div class="ms-auto me-3 align-self-center">
+								<i class="fa fa-briefcase-medical color-white fa-2x mt-4 mb-4"></i>
+							</div>
+						</div>
+					</div>
+				</a>
+				<a href="#" data-menu="menu-hours">
+					<div class="card card-style bg-blue-light mx-0 mb-0">
+						<div class="d-flex">
+							<div class="ps-2 ms-2 align-self-center">
+								<h4 class="pt-4 color-white">Clinic Hours</h4>
+								<p class="font-12 color-white mt-n2 mb-4 opacity-70">See our working schedule.</p>
+							</div>
+							<div class="ms-auto me-3 align-self-center">
+								<i class="fa fa-clock color-white fa-2x mt-4 mb-4"></i>
+							</div>
+						</div>
+					</div>
+				</a>
+            </div>
+        </div>
+
+        <div class="footer" data-menu-load="menu-footer.html"></div>  
+
+    </div>
+    <!-- End of Page Content-->
+
+    <div id="menu-emergency" class="menu menu-box-modal" data-menu-width="320">
+        <div class="menu-title"><h1>Emergencies</h1><p class="color-highlight">Seek Emergency Help Immediately</p><a href="#" class="close-menu"><i class="fa fa-times"></i></a></div>
+        <div class="divider divider-margins mb-n2"></div>
+        <div class="content">
+            <p>
+                Tap the button below to immediately call for medical assistance. This is just a demo.
+            </p>
+            <a href="#" data-menu="menu-close" class="mb-3 btn btn-full btn-m rounded-sm bg-blue-dark shadow-xl text-uppercase font-900 mt-4">Click to Call Now</a>
+        </div>
+    </div>
+
+    <div id="menu-appointment" class="menu menu-box-left" data-menu-width="cover" data-menu-height="cover">
+        <a href="#" class="close-menu py-3 text-center font-12 btn-full rounded-0 text-uppercase font-800 bg-black color-white"><i class="fa fa-arrow-left pe-3"></i>Back to Health Center</a>
+        <img src="images/medical/6t.jpg" class="img-fluid" alt="doctor">
+        <div class="content">
+            <h1>Schedule an Appointment</h1>
+            <p>
+                We're here to take your calls and schedule the best time for you. Our doctors will handle your message immediately.
+            </p>
+
+            <a href="#" class="btn btn-m rounded-sm bg-blue-dark font-700 text-uppercase btn-full mb-4">Call Now</a>
+
+            <div class="divider"></div>
+            <h1>Have us Call You</h1>
+            <p>
+                Send us a message and we'll get back to you in the shortest possible time
+            </p>
+            <div class="form-sent disabled">
+                <div>
+                    <div class="shadow-l rounded-m gradient-blue me-n1 ms-n1 mb-n1 ">
+                        <h1 class="color-white text-center pt-4"><i class="fa fa-check-circle fa-3x shadow-s scale-box rounded-circle"></i></h1>
+                        <h2 class="color-white bold text-center pt-3">Message Sent</h2>
+                        <p class="color-white pb-4 text-center mt-n2 mb-0">We'll get back to you shortly.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="validator-name" class="disabled bg-red-dark rounded-sm shadow-xl text-center line-height-xs py-3 text-uppercase font-700 mb-4">Name is required!</div>
+            <div id="validator-mail1" class="disabled bg-red-dark rounded-sm shadow-xl text-center line-height-xs py-3 text-uppercase font-700 mb-4">Email Address is required!</div>
+            <div id="validator-mail2" class="disabled bg-red-dark rounded-sm shadow-xl text-center line-height-xs py-3 text-uppercase font-700 mb-4">Invalid email Address!</div>
+            <div id="validator-text" class="disabled bg-red-dark rounded-sm shadow-xl text-center line-height-xs py-3 text-uppercase font-700 mb-4">Please enter your message!</div>
+
+            <div class="contact-form">
+                <form action="php/contact.php" method="post" class="contactForm" id="contactForm">
+                    <fieldset>
+                        <div class="form-field form-name">
+                            <label class="contactNameField color-theme" for="contactNameField">Name:<span>(required)</span></label>
+                            <input type="text" name="contactNameField" value="" class="round-small" id="contactNameField" />
+                        </div>
+                        <div class="form-field form-email">
+                            <label class="contactEmailField color-theme" for="contactEmailField">Email:<span>(required)</span></label>
+                            <input type="text" name="contactEmailField" value="" class="round-small" id="contactEmailField" />
+                        </div>
+                        <div class="form-field form-text">
+                            <label class="contactMessageTextarea color-theme font-13" for="contactMessageTextarea">Message:<span>(required)</span></label>
+                            <textarea name="contactMessageTextarea" class="round-small" id="contactMessageTextarea"></textarea>
+                        </div>
+                        <div class="form-button">
+                            <input type="submit" class="btn bg-blue-dark text-uppercase font-900 btn-full rounded-sm  shadow-xl contactSubmitButton" value="Send Message" data-formId="contactForm" />
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+
+            <div class="divider mt-4"></div>
+
+            <h1>Schedule Availability</h1>
+            <p>
+                The dates marked as red are unavailable for scheduling or our clinc is closed.
+            </p>
+            <div class="calendar bg-theme shadow-xl rounded-m mx-0" style="min-width:100%">
+                <div class="cal-header">
+                    <h4 class="cal-title text-center text-uppercase font-800 bg-blue-dark color-white">June</h4>
+                    <h6 class="cal-title-left color-white"><i class="fa fa-chevron-left"></i></h6>
+                    <h6 class="cal-title-right color-white"><i class="fa fa-chevron-right"></i></h6>
+                </div>
+                <div class="clearfix"></div>
+                <div class="cal-days bg-blue-dark opacity-80 bottom-0">
+                    <a href="#">SUN</a>
+                    <a href="#">MON</a>
+                    <a href="#">TUE</a>
+                    <a href="#">WED</a>
+                    <a href="#">THU</a>
+                    <a href="#">FRI</a>
+                    <a href="#">SAT</a>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="cal-dates cal-dates-border">
+                    <a href="#" class="cal-disabled">25</a>
+                    <a href="#" class="cal-disabled">26</a>
+                    <a href="#" class="cal-disabled">27</a>
+                    <a href="#" class="cal-disabled">28</a>
+                    <a href="#" class="cal-disabled">29</a>
+                    <a href="#" class="cal-disabled">30</a>
+                    <a href="#" class="color-red-dark">1</a>
+                    <a href="#">2</a>
+                    <a href="#">3</a>
+                    <a href="#">4</a>
+                    <a href="#">5</a>
+                    <a href="#">6</a>
+                    <a href="#" class="color-red-dark">7</a>
+                    <a href="#" class="color-red-dark">8</a>
+                    <a href="#">9</a>
+                    <a href="#">10</a>
+                    <a href="#">11</a>
+                    <a href="#" class="cal-selected"><i class="fa fa-square color-blue-dark"></i><span>12</span></a>
+                    <a href="#">13</a>
+                    <a href="#" class="color-red-dark">14</a>
+                    <a href="#" class="color-red-dark">15</a>
+                    <a href="#">16</a>
+                    <a href="#">17</a>
+                    <a href="#">18</a>
+                    <a href="#">19</a>
+                    <a href="#">20</a>
+                    <a href="#" class="color-red-dark">21</a>
+                    <a href="#" class="color-red-dark">22</a>
+                    <a href="#">23</a>
+                    <a href="#">24</a>
+                    <a href="#">25</a>
+                    <a href="#">26</a>
+                    <a href="#">27</a>
+                    <a href="#" class="color-red-dark">28</a>
+                    <a href="#" class="color-red-dark">29</a>
+                    <a href="#">30</a>
+                    <a href="#">31</a>
+                    <a href="#" class="cal-disabled">1</a>
+                    <a href="#" class="cal-disabled">2</a>
+                    <a href="#" class="cal-disabled">3</a>
+                    <a href="#" class="cal-disabled">4</a>
+                    <a href="#" class="cal-disabled">5</a>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+        <a href="#" class="close-menu btn btn-full btn-m text-uppercase font-700 bg-red-dark mx-3 rounded-sm mb-5 mt-5">Back to Health Center</a>
+    </div>
+
+    <div id="menu-hours" class="menu menu-box-modal" data-menu-width="330">
+        <div class="menu-title"><h1>Clinic Hours</h1><p class="color-highlight">Our Available Schedule</p><a href="#" class="close-menu"><i class="fa fa-times"></i></a></div>
+        <div class="divider divider-margins mb-n2 mt-3"></div>
+        <div class="content mt-4 pt-2 mb-0">
+            <!-- To set open and Close Hours Open custom.js and search for "SET OPENING HOURS BELOW" -->
+            <!-- Only setting the code below will not make the system work automatically-->
+            <div data-day="Monday" class="working-hours"><p>Monday</p>    <p>09:00 AM</p> <p>05:00 PM</p></div>
+            <div data-day="Tuesday" class="working-hours"><p>Tuesday</p>   <p>09:00 AM</p> <p>05:00 PM</p></div>
+            <div data-day="Wednesday" class="working-hours"><p>Wednesday</p> <p>09:00 AM</p> <p>05:00 PM</p></div>
+            <div data-day="Thursday" class="working-hours"><p>Thursday</p>  <p>09:00 AM</p> <p>05:00 PM</p></div>
+            <div data-day="Friday" class="working-hours"><p>Friday</p>    <p>09:00 AM</p> <p>05:00 PM</p></div>
+        </div>
+        <div class="divider mb-2"></div>
+        <p class="mb-0 text-center font-11 opacity-60 pt-1">Emergency hotline. Tap to Call Instantly</p>
+        <a href="#" data-menu="menu-close" class="mb-3 btn btn-full btn-l rounded-m bg-blue-dark shadow-xl text-uppercase font-900 mt-2 mx-3">Click to Call Now</a>
+    </div>
+
+	<div id="menu-share" 
+		 class="menu menu-box-bottom menu-box-detached rounded-m" 
+		 data-menu-load="menu-share.html"
+		 data-menu-height="420" 
+		 data-menu-effect="menu-over">
+	</div>    
+	
+	<div id="menu-highlights" 
+		 class="menu menu-box-bottom menu-box-detached rounded-m" 
+		 data-menu-load="menu-colors.html"
+		 data-menu-height="510" 
+		 data-menu-effect="menu-over">        
+	</div>
+	
+	<div id="menu-main"
+		 class="menu menu-box-right menu-box-detached rounded-m"
+		 data-menu-width="260"
+		 data-menu-load="menu-main.html"
+		 data-menu-active="nav-pages"
+		 data-menu-effect="menu-over">  
+	</div>
+	
+</div>    
+
+
+
+<script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+<script type="text/javascript" src="scripts/custom.js"></script>
+</body>
