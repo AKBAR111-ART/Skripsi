@@ -14,6 +14,37 @@
     <link rel="manifest" href="_manifest.json" data-pwa-version="set_in_manifest_and_pwa_js">
     <link rel="manifest" href="_manifest.json">
      
+    <style>
+.profile-trigger {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+.profile-trigger img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.profile-panel {
+    position: fixed;
+    top: 0;
+    right: -320px;
+    width: 300px;
+    height: 100%;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+    transition: 0.3s;
+    z-index: 999;
+}
+
+.profile-panel.active {
+    right: 0;
+}
+</style>
 </head>
 <body>
 <main>
@@ -42,6 +73,15 @@
   </a>
 
 </div>
+<div id="profilePanel" class="profile-panel">
+    <div class="profile-content">
+        <span onclick="closeProfile()">×</span>
+
+        <h3>Profile</h3>
+        <p>Nama Kamu</p>
+    </div>
+</div>
+
 <style>
 :root {
   --primary: #007bff;
@@ -109,6 +149,7 @@
 }
 </style>
 
+
 {{-- json --}}
 <script>
 fetch('/theme.json')
@@ -138,5 +179,22 @@ fetch('/theme.json')
   })
   .catch(error => console.log('JSON error:', error));
 </script>
+@include('component.profile-panel')
+    <!-- Konten lain -->
+    @yield('content')
+
+    <!-- Profile Panel -->
+    @include('component.profile-panel')
+
+    <!-- JAVASCRIPT (TARUH DI SINI) -->
+    <script>
+    function openProfile() {
+        document.getElementById("profilePanel").classList.add("active");
+    }
+
+    function closeProfile() {
+        document.getElementById("profilePanel").classList.remove("active");
+    }
+    </script>
 </body>
 </html>
