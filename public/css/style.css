@@ -1,0 +1,242 @@
+/* ROOT */
+:root {
+  --main-color: #4e73df;
+  --bg-color: #f4f6f9;
+  --text-color: #333;
+}
+
+/* DARK MODE */
+body.dark-mode {
+  --bg-color: #1e1e2f;
+  --text-color: #ffffff;
+}
+
+/* BODY */
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding-top: 60px;
+  padding-bottom: 80px;
+  transition: 0.3s;
+}
+
+/* =======================
+   HEADER PREMIUM
+======================= */
+.header-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 15px 20px; /* 🔥 lebih besar */
+
+  background: linear-gradient(135deg, #36d1dc, #5b86e5); /* 🔥 sama kayak pH */
+  
+  color: white;
+
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+
+  z-index: 1100;
+}
+.header-top::after {
+  content: "";
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2), transparent);
+  transform: rotate(20deg);
+}
+
+/* LOGO */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-img {
+  width: 45px;   /* 🔥 lebih besar */
+  height: 45px;
+  border-radius: 50%;
+}
+
+.logo-text {
+  font-size: 20px; /* 🔥 lebih gede */
+  font-weight: bold;
+  letter-spacing: 1px;
+
+  color: white;
+
+  text-shadow: 
+    0 0 8px rgba(255,255,255,0.7),
+    0 0 15px rgba(255,255,255,0.4);
+}
+/* AVATAR */
+.profile-trigger {
+  position: fixed;
+  top: 10px;
+  right: 15px;
+  z-index: 2000;
+  cursor: pointer;
+}
+
+.profile-trigger img {
+  width: 40px;
+  border-radius: 50%;
+}
+
+/* =======================
+   FOOTBAR PREMIUM
+======================= */
+/* =========================
+   FOOTBAR PREMIUM MINIMAL
+========================= */
+.footbar {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 95%;
+  max-width: 500px;
+  height: 70px;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  background: #ffffff;
+  border-radius: 25px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+  z-index: 1000;
+  overflow: visible;
+}
+
+/* DARK MODE FOOTBAR */
+body.dark-mode .footbar {
+  background: rgba(20,20,20,0.95);
+  box-shadow: 0 10px 30px rgba(255,255,255,0.1);
+}
+
+/* ITEM */
+.footbar a {
+ position: relative;
+  flex: 1;
+  text-align: center;
+  color: #777;
+  text-decoration: none;
+  font-size: 11px;
+  transition: 0.3s;
+  z-index: 3;
+}
+.footbar a small {
+  opacity: 0.7;
+}
+
+.footbar a.active small {
+  opacity: 1;
+}
+
+/* ICON */
+.footbar a span {
+    position: relative;
+  z-index: 4; /* 🔥 pastikan icon paling depan */
+     display: block;
+  font-size: 22px;
+  transition: 0.3s;
+}
+.footbar a p {
+   display: block;
+  font-size: 22px;
+  transition: 0.3s;
+}
+
+/* ACTIVE */
+.footbar a.active {
+   color: var(--main-color);
+  text-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+
+/* ICON NAIK */
+.footbar a.active span {
+   transform: translateY(-12px);
+   text-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.footbar a small {
+  display: block;
+  font-size: 10px;
+  margin-top: 6px; /* 🔥 ini bikin turun */
+  transition: 0.3s;
+}
+.footbar a.active small {
+  margin-top: 10px;
+}
+body.dark-mode .footbar a {
+  color: #aaa;
+}
+
+body.dark-mode .footbar a.active {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+/* =========================
+   INDICATOR (ANIMASI)
+========================= */
+.indicator {
+  position: absolute;
+  top: -11px;
+
+  width: 55px;
+  height: 55px;
+
+  background: white;
+  border-radius: 50%;
+
+  z-index: 1;
+transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+
+  box-shadow: 
+    0 10px 25px rgba(0,0,0,0.25),
+    inset 0 2px 5px rgba(255,255,255,0.8);
+}
+
+/* 🔥 BAYANGAN SETENGAH LINGKARAN DI BELAKANG */
+.indicator::before {
+  content: "";
+  position: absolute;
+
+  width: 70px;
+  height: 35px;
+
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  background: rgba(0,0,0,0.15);
+
+  border-radius: 50%;
+
+  filter: blur(10px);
+  z-index: -1;
+}
+/* DARK MODE INDICATOR */
+body.dark-mode .indicator {
+  background: #000;
+  box-shadow: 0 0 20px rgba(255,255,255,0.6);
+}
+
+/* HOVER */
+.footbar a:hover span {
+  transform: scale(1.2);
+}

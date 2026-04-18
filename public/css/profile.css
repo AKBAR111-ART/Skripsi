@@ -1,0 +1,23 @@
+.profile-container {
+  max-width: 400px;
+  margin: 20px auto;
+  background: white;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.profile-header {
+  background: var(--main-color);
+  color: white;
+  padding: 20px;
+}
+
+.profile-img {
+  width: 80px;
+  border-radius: 50%;
+  margin-top: -40px;
+}
+
+.profile-body {
+  padding: 20px;
+}
