@@ -10,9 +10,15 @@
 
 <div class="dashboard-container">
 
-    <!-- KIRI (GRAFIK - KOSONG DULU) -->
+    <!-- KIRI (GRAFIK ) -->
     <div class="left-panel">
-        <!-- nanti isi chart di sini -->
+        <div class="card-graph">
+            <h4>Grafik 12 Minggu</h4>
+
+            <div class="graph-scroll">
+                <canvas id="weeklyChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <!-- KANAN (SEMUA CARD) -->
@@ -41,16 +47,15 @@
 
             <!-- REKOMENDASI -->
             <div class="rekomendasi-card normal">
-    <h3>🍤 Rekomendasi Pakan</h3>
-    <p id="rekomendasiText">Menunggu data...</p>
+                <h3>🍤 Rekomendasi Pakan</h3>
+                <p id="rekomendasiText">Menunggu data...</p>
 
-    <!-- 🔥 BOX HASIL KALKULASI -->
-    <div class="feed-box">
-        <div class="feed-label">Estimasi Pakan</div>
-        <div class="feed-value">2.5 <span>Kg</span></div>
-        <div class="feed-note">Berdasarkan kondisi air saat ini</div>
-    </div>
-</div>
+                <div class="feed-box">
+                    <div class="feed-label">Estimasi Pakan</div>
+                    <div class="feed-value">2.5 <span>Kg</span></div>
+                    <div class="feed-note">Berdasarkan kondisi air saat ini</div>
+                </div>
+            </div>
 
         </div>
 
@@ -61,5 +66,6 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
 <script src="{{ asset('js/home.js') }}"></script>
 @endpush

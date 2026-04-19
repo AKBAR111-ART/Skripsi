@@ -1,25 +1,59 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+    // ======================
+    // INIT CHART
+    // ======================
+    let chart;
+    const canvas = document.getElementById("weeklyChart");
+
+    if (canvas) {
+        const ctx = canvas.getContext("2d");
+
+        chart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [
+                    "M1","M2","M3","M4","M5","M6",
+                    "M7","M8","M9","M10","M11","M12"
+                ],
+                datasets: [{
+                    label: "pH Air",
+                    data: [7.2,7.4,7.1,7.6,7.3,7.5,7.7,7.2,7.4,7.6,7.8,7.5],
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // ======================
+    // UPDATE SENSOR
+    // ======================
     function updateSensor() {
 
-        // ELEMENT
-        let phEl = document.getElementById("phValue");
-        let turbEl = document.getElementById("turbidityValue");
+        const phEl = document.getElementById("phValue");
+        const turbEl = document.getElementById("turbidityValue");
 
-        let phStatus = document.getElementById("phStatus");
-        let turbStatus = document.getElementById("turbidityStatus");
-
-        let phIcon = document.getElementById("phIcon");
-        let turbIcon = document.getElementById("turbidityIcon");
-
-        let phCard = document.querySelector(".card-monitor.ph");
-        let turbCard = document.querySelector(".card-monitor.turbidity");
-
-        let rekom = document.getElementById("rekomendasiText");
-        let rekomCard = document.querySelector(".rekomendasi-card");
-
-        // STOP kalau bukan halaman home
         if (!phEl || !turbEl) return;
+
+        const phStatus = document.getElementById("phStatus");
+        const turbStatus = document.getElementById("turbidityStatus");
+
+        const phIcon = document.getElementById("phIcon");
+        const turbIcon = document.getElementById("turbidityIcon");
+
+        const phCard = document.querySelector(".card-monitor.ph");
+        const turbCard = document.querySelector(".card-monitor.turbidity");
+
+        const rekom = document.getElementById("rekomendasiText");
+        const rekomCard = document.querySelector(".rekomendasi-card");
+        const feedValue = document.querySelector(".feed-value");
 
         // ======================
         // DATA SIMULASI
@@ -107,38 +141,56 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // ======================
-        // REKOMENDASI CERDAS
+        // RULE BASED (KG)
         // ======================
         let finalState = "normal";
+        let baseFeed = 2.5; // kg (default)
+        let feed = 0;
 
         if (phState === "danger" || turbState === "danger") {
             finalState = "danger";
+            feed = baseFeed * 0.5;
             rekom.innerText = "🚨 Hentikan pakan! Air dalam kondisi buruk.";
 
         } else if (phState === "warning" || turbState === "warning") {
             finalState = "warning";
+            feed = baseFeed * 0.75;
             rekom.innerText = "⚠ Kurangi pakan, kondisi air kurang stabil.";
 
         } else {
             finalState = "normal";
+            feed = baseFeed;
             rekom.innerText = "✅ Pakan optimal, kondisi air sangat baik.";
         }
 
         rekomCard.classList.add(finalState);
+
+        // 🔥 OUTPUT KG
+        feedValue.innerHTML = feed.toFixed(2) + " <span>Kg</span>";
+
+        // ======================
+        // UPDATE CHART
+        // ======================
+        if (chart) {
+            chart.data.datasets[0].data.shift();
+            chart.data.datasets[0].data.push(ph);
+            chart.update();
+        }
     }
 
-    // LOOP SENSOR
-    setInterval(updateSensor, 3000);
+    // LOOP
     updateSensor();
+    setInterval(updateSensor, 3000);
 
     // ======================
-    // FIX AVATAR CLICK
+    // AVATAR CLICK
     // ======================
-    let avatar = document.querySelector(".profile-trigger");
-
+    const avatar = document.querySelector(".profile-trigger");
     if (avatar) {
         avatar.addEventListener("click", function () {
-            openProfile();
+            if (typeof openProfile === "function") {
+                openProfile();
+            }
         });
     }
 
@@ -164,4 +216,3 @@ function animateValue(el, start, end, duration) {
 
     requestAnimationFrame(step);
 }
-phCard.classList.add("normal"); // atau warning / danger
