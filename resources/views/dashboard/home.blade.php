@@ -12,9 +12,9 @@
 
     <!-- TOP BAR -->
     <div class="top-cards">
-        <div class="top-card green">📦 Pakan Hari Ini: <b>500 gram</b></div>
-        <div class="top-card green">🛡️ Kondisi Air: <b>Normal</b></div>
-        <div class="top-card red">⚠ Status: <b>Aman</b></div>
+        <div class="top-card green">📦 Pakan Hari Ini: <b id="topFeed">-</b></div>
+        <div class="top-card green">🛡️ Kondisi Air: <b id="topWater">-</b></div>
+        <div class="top-card red">⚠ Status: <b id="topStatus">-</b></div>
     </div>
 
     <!-- MAIN CARD -->
@@ -25,47 +25,61 @@
             <h3>Informasi Kualitas Air (Real-time)</h3>
 
             <div class="gauge-wrap">
-                <div class="gauge">
+
+                <!-- PH -->
+                 <div class="gauge">
+                    <h5>pH Air</h5>
                     <canvas id="phGauge"></canvas>
-                    <div class="gauge-value" id="phText">7.8</div>
-                    <span class="badge green">Normal</span>
+                    <div class="gauge-value" id="phText">0</div>
+                    <span class="badge green" id="phStatus">Normal</span>
                 </div>
 
+
+                <!-- TURBIDITY -->
                 <div class="gauge">
+                   <h5>Turbidity</h5>
                     <canvas id="turbGauge"></canvas>
-                    <div class="gauge-value" id="turbText">30</div>
-                    <span class="badge yellow">Sedang</span>
+                    <div class="gauge-value" id="turbText">0 NTU</div>
+                    <span class="badge yellow" id="turbStatus">Sedang</span>
                 </div>
+
             </div>
         </div>
 
         <!-- TENGAH -->
         <div class="card">
             <h3>Rekomendasi Pakan</h3>
+
             <ul class="list">
-                <li>✔ Jumlah Pakan: <b>500 gram / hari</b></li>
                 <li>✔ Frekuensi: <b>4x sehari</b></li>
                 <li>✔ Waktu: <b>07.00, 11.00, 19.00</b></li>
             </ul>
+
+            <!-- 🔥 BOX HASIL -->
+            <div class="feed-box">
+                <div class="feed-label">Estimasi Pakan</div>
+                <div class="feed-value" id="feedValue">0 Kg</div>
+                <div class="feed-note">Berdasarkan kondisi air</div>
+            </div>
         </div>
 
         <!-- KANAN -->
         <div class="card">
             <h3>Status Kondisi Tambak</h3>
 
-            <div class="status-box yellow">Kondisi: Kurang Baik</div>
-            <div class="status-box blue">Penyebab: Air Terlalu Keruh</div>
+            <div class="status-box yellow" id="pondCondition">-</div>
+            <div class="status-box blue" id="pondCause">-</div>
 
-            <p class="action">
-                Kurangi Pakan & Tambah Air Baru
+            <p class="action" id="pondAction">
+                -
             </p>
         </div>
 
     </div>
 
     <!-- ALERT -->
-    <div class="alert-box">
-        ⚠ ALERT: Air Keruh! Kurangi Pakan!
+    <div class="alert-box" id="alertBox">
+        -
     </div>
 
     <!-- GRAFIK -->
