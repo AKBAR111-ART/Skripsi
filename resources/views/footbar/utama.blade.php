@@ -14,7 +14,14 @@
 </head>
 
 <body>
+<!-- 🔥 TAMBAHAN DI SINI -->
+<div class="animated-bg">
+    <div class="water-layer"></div>
 
+    <div class="shrimp"></div>
+    <div class="shrimp"></div>
+    <div class="shrimp"></div>
+</div>
 <!-- HEADER -->
 <div class="header-top">
     <div class="logo-area">
