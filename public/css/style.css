@@ -13,7 +13,9 @@ body.dark-mode {
 
 /* BODY */
 body {
-  background: var(--bg-color);
+  
+
+  background-size: cover;
   color: var(--text-color);
   font-family: Arial, sans-serif;
   margin: 0;

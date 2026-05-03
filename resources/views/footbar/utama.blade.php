@@ -9,19 +9,29 @@
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('css/panel-profile.css') }}">
 
+    <!-- 🔥 BACKGROUND FIX -->
+    <style>
+        body {
+            background: url('{{ asset('images/udang.png') }}') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        /* OPTIONAL: biar lebih elegan */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: -1;
+        }
+    </style>
+
     <!-- PAGE CSS -->
     @stack('styles')
 </head>
 
-<body>
-<!-- 🔥 TAMBAHAN DI SINI -->
-<div class="animated-bg">
-    <div class="water-layer"></div>
+<body style="background: url('{{ asset('images/udang.png') }}') no-repeat center center fixed; background-size: cover;">
 
-    <div class="shrimp"></div>
-    <div class="shrimp"></div>
-    <div class="shrimp"></div>
-</div>
 <!-- HEADER -->
 <div class="header-top">
     <div class="logo-area">
@@ -43,10 +53,8 @@
     @yield('content')
 </main>
 
-<!-- FOOTBAR MODERN -->
-<div class="footbar">
-
- 
+<!-- FOOTBAR -->
+z<div class="footbar">
 
     <a href="{{ url('/') }}" class="{{ request()->is('/') ? 'active' : '' }}">
         <span>🏠</span>
@@ -72,9 +80,8 @@
         <span>👤</span>
         <small>Profile</small>
     </a>
-       <!-- 🔥 PINDAH KE SINI -->
-    <div class="indicator"></div>
 
+    <div class="indicator"></div>
 </div>
 
 <!-- GLOBAL JS -->
