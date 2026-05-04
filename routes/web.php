@@ -13,7 +13,9 @@ Route::get('/akbar', function () {
 
 
 Route::get('', [UtamaController::class, 'index']);
-Route::get('/', [HomeController::class, 'index1']);
+Route::get('/', function () {
+    return view('dashboard.home');
+});
 Route::get('/history', [HistoryController::class, 'index2']);
 Route::get('/monitoring', [MonitoringController::class, 'index3']);
 Route::get('/pengaturan', [PengaturanController::class, 'index4']);

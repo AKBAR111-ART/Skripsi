@@ -2,12 +2,18 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SensorController;
+use App\Models\Sensor;
 
-Route::post('/sensor', [SensorController::class, 'store']);
-Route::get('/sensor/latest', function () {
-    return response()->json([
-        'ph' => 7.2,
-        'turbidity' => 30
-    ]);
+
+Route::post('/sensor', function (Request $request) {
+
+    \App\Models\Sensor::updateOrCreate(
+        ['id' => 1],
+        [
+            'ph' => $request->ph,
+            'turbidity' => $request->turbidity
+        ]
+    );
+
+    return response()->json(['status' => 'ok']);
 });
