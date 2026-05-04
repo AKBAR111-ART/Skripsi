@@ -54,7 +54,7 @@
 </main>
 
 <!-- FOOTBAR -->
-z<div class="footbar">
+<div class="footbar">
 
     <a href="{{ url('/') }}" class="{{ request()->is('/') ? 'active' : '' }}">
         <span>🏠</span>
@@ -85,8 +85,11 @@ z<div class="footbar">
 </div>
 
 <!-- GLOBAL JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ asset('js/panel-profile.js') }}"></script>
 <script src="{{ asset('js/app.js') }}"></script>
+
+
 
 <!-- PAGE JS -->
 @stack('scripts')

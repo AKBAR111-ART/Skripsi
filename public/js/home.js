@@ -1,10 +1,58 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-    // ======================
-    // RANDOM DATA
-    // ======================
-    let ph = parseFloat((Math.random() * (8.5 - 6) + 6).toFixed(1));
-    let turb = Math.floor(Math.random() * 80);
+    console.log("HOME READY");
+
+    initCharts();        // buat chart sekali
+    updateDashboard();   // load pertama
+    setInterval(updateDashboard, 5000); // update data
+
+});
+
+
+// ======================
+// GLOBAL CHART STORAGE
+// ======================
+let charts = {};
+
+
+// ======================
+// INIT CHART (HANYA SEKALI)
+// ======================
+function initCharts() {
+
+    createLineChart("chartPh", "#3498db");
+    createLineChart("chartTurb", "#f39c12");
+    createBarChart("chartFeed");
+
+    createGauge("phGauge", "#2ecc71");
+    createGauge("turbGauge", "#f1c40f");
+}
+
+
+// ======================
+// FETCH DATA
+// ======================
+async function getSensorData() {
+    try {
+        const res = await fetch("/api/sensor/latest");
+        return await res.json();
+    } catch (err) {
+        console.log("Error ambil data:", err);
+        return null;
+    }
+}
+
+
+// ======================
+// UPDATE DASHBOARD
+// ======================
+async function updateDashboard() {
+
+    const data = await getSensorData();
+    if (!data) return;
+
+    let ph = parseFloat(data.ph);
+    let turb = parseFloat(data.turbidity);
 
     // ======================
     // ELEMENT
@@ -21,28 +69,28 @@ document.addEventListener("DOMContentLoaded", () => {
     // ======================
     // ANIMASI ANGKA
     // ======================
-    animateNumber(phText, 0, ph, 800);
-    animateNumber(turbText, 0, turb, 800, " NTU");
+    animateNumber(phText, ph, "", 500);
+    animateNumber(turbText, turb, " NTU", 500);
 
     // ======================
     // LOGIC
     // ======================
     let pakan = 2.5;
-    let status = "Aman";
 
     if (turb > 50) {
         turbStatus.innerText = "Keruh";
         turbStatus.className = "badge red";
         pakan -= 1;
-        status = "Bahaya";
 
         alertBox.classList.add("danger");
         alertBox.innerText = "⚠ ALERT: Air Keruh! Kurangi Pakan!";
-    } else if (turb > 25) {
+    } 
+    else if (turb > 25) {
         turbStatus.innerText = "Sedang";
         turbStatus.className = "badge yellow";
         pakan -= 0.5;
-    } else {
+    } 
+    else {
         turbStatus.innerText = "Jernih";
         turbStatus.className = "badge green";
     }
@@ -50,46 +98,49 @@ document.addEventListener("DOMContentLoaded", () => {
     if (ph < 6.5) {
         phStatus.innerText = "Asam";
         phStatus.className = "badge red";
-    } else if (ph <= 8) {
+    } 
+    else if (ph <= 8) {
         phStatus.innerText = "Normal";
         phStatus.className = "badge green";
-    } else {
+    } 
+    else {
         phStatus.innerText = "Basa";
         phStatus.className = "badge yellow";
     }
 
-    animateNumber(feedValue, 0, pakan, 1000, " Kg");
+    animateNumber(feedValue, pakan, " Kg", 700);
 
     // ======================
-    // GAUGE ANIMASI
+    // UPDATE CHART DATA
     // ======================
-    createGauge("phGauge", ph, 10, "#2ecc71");
-    createGauge("turbGauge", turb, 100, "#f1c40f");
+    updateLineChart("chartPh", ph);
+    updateLineChart("chartTurb", turb);
+    updateBarChart("chartFeed", pakan);
 
-    // ======================
-    // CHART PREMIUM
-    // ======================
-    createChart("chartPh", "#3498db", [6.5,7,6.6,6.4,6.7,6.2,6.6]);
-    createChart("chartTurb", "#f39c12", [20,15,30,28,45,40,60]);
-    createBarChart("chartFeed", [2,3,5,3,4,2,3]);
-
-});
+    updateGauge("phGauge", ph, 10);
+    updateGauge("turbGauge", turb, 100);
+}
 
 
 // ======================
 // ANIMASI ANGKA
 // ======================
-function animateNumber(el, start, end, duration, suffix = "") {
+function animateNumber(el, value, suffix = "", duration = 500) {
+    if (!el) return;
+
+    let start = 0;
     let startTime = null;
 
     function step(timestamp) {
         if (!startTime) startTime = timestamp;
+
         let progress = timestamp - startTime;
-        let value = Math.min(start + (end - start) * (progress / duration), end);
+        let percent = Math.min(progress / duration, 1);
+        let current = start + (value - start) * percent;
 
-        el.innerText = value.toFixed(1) + suffix;
+        el.innerText = current.toFixed(1) + suffix;
 
-        if (progress < duration) requestAnimationFrame(step);
+        if (percent < 1) requestAnimationFrame(step);
     }
 
     requestAnimationFrame(step);
@@ -97,14 +148,122 @@ function animateNumber(el, start, end, duration, suffix = "") {
 
 
 // ======================
-// GAUGE
+// CREATE LINE CHART
 // ======================
-function createGauge(id, value, max, color) {
-    new Chart(document.getElementById(id), {
+function createLineChart(id, color) {
+
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, "transparent");
+
+    charts[id] = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: color,
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { display: true }
+            }
+        }
+    });
+}
+
+
+// ======================
+// UPDATE LINE CHART
+// ======================
+function updateLineChart(id, value) {
+
+    if (!charts[id]) return;
+
+    const chart = charts[id];
+
+    chart.data.labels.push("");
+    chart.data.datasets[0].data.push(value);
+
+    if (chart.data.labels.length > 7) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+
+// ======================
+// CREATE BAR CHART
+// ======================
+function createBarChart(id) {
+
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+
+    charts[id] = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: "#3498db",
+                borderRadius: 10
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+
+// ======================
+// UPDATE BAR CHART
+// ======================
+function updateBarChart(id, value) {
+
+    if (!charts[id]) return;
+
+    const chart = charts[id];
+
+    chart.data.labels.push("");
+    chart.data.datasets[0].data.push(value);
+
+    if (chart.data.labels.length > 7) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+
+// ======================
+// CREATE GAUGE
+// ======================
+function createGauge(id, color) {
+
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+
+    charts[id] = new Chart(canvas, {
         type: "doughnut",
         data: {
             datasets: [{
-                data: [value, max - value],
+                data: [0, 100],
                 backgroundColor: [color, "#ecf0f1"],
                 borderWidth: 0
             }]
@@ -113,10 +272,6 @@ function createGauge(id, value, max, color) {
             rotation: -90,
             circumference: 180,
             cutout: "75%",
-            animation: {
-                animateRotate: true,
-                duration: 1200
-            },
             plugins: { legend: { display: false } }
         }
     });
@@ -124,58 +279,14 @@ function createGauge(id, value, max, color) {
 
 
 // ======================
-// LINE CHART PREMIUM
+// UPDATE GAUGE
 // ======================
-function createChart(id, color, data) {
-    const ctx = document.getElementById(id).getContext("2d");
+function updateGauge(id, value, max) {
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, "transparent");
+    if (!charts[id]) return;
 
-    new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: ["1.3","1.4","1.5","1.6","1.7","1.8","1.9"],
-            datasets: [{
-                data: data,
-                borderColor: color,
-                backgroundColor: gradient,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            animation: {
-                duration: 1500
-            }
-        }
-    });
-}
+    const chart = charts[id];
 
-
-// ======================
-// BAR CHART
-// ======================
-function createBarChart(id, data) {
-    new Chart(document.getElementById(id), {
-        type: "bar",
-        data: {
-            labels: ["1.3","1.4","1.5","1.6","1.7","1.8","1.9"],
-            datasets: [{
-                data: data,
-                backgroundColor: "#3498db",
-                borderRadius: 10
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            animation: {
-                duration: 1200
-            }
-        }
-    });
+    chart.data.datasets[0].data = [value, max - value];
+    chart.update();
 }
