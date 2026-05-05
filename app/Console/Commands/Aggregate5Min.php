@@ -4,8 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Sensor;
-use App\Models\Sensor10Min;
-use Illuminate\Support\Facades\Log;
 use App\Models\Sensor5Min;
 
 class Aggregate5Min extends Command
@@ -16,7 +14,10 @@ class Aggregate5Min extends Command
 
 public function handle()
 {
-    $data = \App\Models\Sensor::latest()->take(50)->get();
+    $from = now()->subMinutes(5);
+    $to = now();
+
+    $data = Sensor::whereBetween('created_at', [$from, $to])->get();
 
     echo "DATA COUNT: " . $data->count() . "\n";
 
@@ -25,7 +26,7 @@ public function handle()
         $avgPh = $data->avg('ph');
         $avgTurbidity = $data->avg('turbidity');
 
-        \App\Models\Sensor5Min::create([
+        Sensor5Min::create([
             'avg_ph' => $avgPh,
             'avg_turbidity' => $avgTurbidity,
             'time_5min' => now(),
