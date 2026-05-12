@@ -15,14 +15,12 @@ body {
     margin-bottom: 20px;
 }
 
-/* LEFT SIDE */
 .profile-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-/* ICON PROFILE (FIX SIZE BIAR SAMA) */
 .profile-icon {
     width: 48px;
     height: 48px;
@@ -31,7 +29,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0; /* biar gak gepeng */
+    flex-shrink: 0;
 }
 
 .profile-icon img {
@@ -39,12 +37,10 @@ body {
     height: 26px;
 }
 
-/* TEXT HEADER (INI YANG BIKIN TINGGI SAMA) */
 .profile-header h2 {
-    margin: 0; /* HAPUS MARGIN DEFAULT */
+    margin: 0;
     font-size: 22px;
     font-weight: 600;
-    line-height: 1.2;
 }
 
 .profile-header p {
@@ -53,7 +49,6 @@ body {
     color: #7a8ca3;
 }
 
-/* BUTTON */
 .edit-btn {
     border: 1px solid #4a90e2;
     padding: 10px 16px;
@@ -79,11 +74,6 @@ body {
     border-radius: 15px;
 }
 
-/* INFO */
-.info-box h3 {
-    margin-bottom: 10px;
-}
-
 .info-box .info-item {
     display: flex;
     justify-content: space-between;
@@ -91,7 +81,12 @@ body {
     border-bottom: 1px solid #eee;
 }
 
-/* SUMMARY */
+.info-item b {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* ================= SUMMARY ================= */
 .summary-card {
     background: #f5f8ff;
     padding: 15px;
@@ -100,8 +95,8 @@ body {
 
 .summary-card .row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     margin-bottom: 12px;
 }
 
@@ -109,9 +104,6 @@ body {
     padding: 5px 10px;
     border-radius: 10px;
     font-size: 12px;
-}
-
-.normal {
     background: #d4f5e2;
     color: #1a7f4b;
 }
@@ -152,13 +144,6 @@ body {
     align-items: center;
 }
 
-.badge {
-    background: #d4f5e2;
-    padding: 5px 10px;
-    border-radius: 10px;
-    font-size: 12px;
-}
-
 /* ================= BUDIDAYA ================= */
 .budidaya-box {
     background: #f5f8ff;
@@ -194,9 +179,119 @@ body {
     margin-top: 20px;
 }
 
-/* ================= HOVER ================= */
-.profile-icon:hover {
-    transform: scale(1.08);
-    transition: 0.25s;
+/* ================= MODAL PREMIUM ================= */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 30, 0.65);
+    backdrop-filter: blur(6px);
+    z-index: 99999;
+    overflow-y: auto;
+    padding: 40px 15px;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 480px;
+    margin: auto;
+    padding: 25px;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: popIn 0.25s ease;
+}
+
+.modal-content h3 {
+    margin-bottom: 18px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2d3d;
+}
+
+.modal-content label {
+    font-size: 13px;
+    color: #6b7b8c;
+    display: block;
+    margin-top: 10px;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 5px;
+    border-radius: 10px;
+    border: 1px solid #e5e9f0;
+    background: #f9fbff;
+    outline: none;
+    font-size: 14px;
+}
+
+.modal-content input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74,144,226,0.15);
+    background: white;
+}
+
+.modal-action {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.modal-action button {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: none;
     cursor: pointer;
+    font-weight: 500;
+}
+
+.modal-action button[type="button"] {
+    background: #f1f3f7;
+}
+
+.modal-action button[type="submit"] {
+    background: linear-gradient(135deg, #4a90e2, #357bd8);
+    color: white;
+}
+
+/* ================= TOAST ================= */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: white;
+    z-index: 99999;
+    animation: slideIn 0.4s ease, fadeOut 0.5s ease 3s forwards;
+}
+
+.toast.success {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* ================= ANIMATION ================= */
+@keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateX(100%); }
+}
+
+body.modal-open {
+    overflow: hidden;
 }

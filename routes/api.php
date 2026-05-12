@@ -2,20 +2,21 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Models\Sensor;
 
 use App\Http\Controllers\FeedingController;
+use App\Http\Controllers\SensorController;
 
-Route::post('/api/feeding/{shift}', [FeedingController::class, 'update']);
-Route::post('/sensor', function (Request $request) {
+/*
+|--------------------------------------------------------------------------
+| API Routes (IoT Tambak Udang)
+|--------------------------------------------------------------------------
+*/
 
-    \App\Models\Sensor::updateOrCreate(
-        ['id' => 1],
-        [
-            'ph' => $request->ph,
-            'turbidity' => $request->turbidity
-        ]
-    );
+// FEEDING (ESP32 / sistem pakan otomatis)
+Route::post('/feeding/{shift}', [FeedingController::class, 'update']);
 
-    return response()->json(['status' => 'ok']);
-});
+// SENSOR (ESP32 kirim data pH & turbidity)
+Route::post('/sensor', [SensorController::class, 'store']);
+
+// OPTIONAL: ambil data sensor terbaru (dashboard realtime)
+Route::get('/sensor/latest', [SensorController::class, 'latest']);

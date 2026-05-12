@@ -2,10 +2,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("HOME READY");
 
-    initCharts();        
-    updateDashboard();   
+    initCharts();
+    updateDashboard();
 
-    setInterval(updateDashboard, 3000); // realtime tiap 3 detik
+    // REALTIME TIAP 1 DETIK
+    setInterval(updateDashboard, 1000);
 });
 
 
@@ -13,6 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
 // GLOBAL CHART STORAGE
 // ======================
 let charts = {};
+
+
+// ======================
+// MODAL STATE
+// ======================
+let editModalOpen = false;
 
 
 // ======================
@@ -30,41 +37,45 @@ function initCharts() {
 
 
 // ======================
-// FETCH DATA
+// FETCH DATA REALTIME
 // ======================
 async function getSensorData() {
+
     try {
-        const res = await fetch("/api/sensor");
-        return await res.json();
+
+        // 🔥 FIX REALTIME API
+        const res = await fetch("/sensor/latest");
+
+        const data = await res.json();
+
+        console.log("REALTIME:", data);
+
+        return data;
+
     } catch (err) {
+
         console.log("Error ambil data:", err);
+
         return null;
     }
 }
 
 
 // ======================
-// UPDATE DASHBOARD (FIX TOTAL)
+// UPDATE DASHBOARD
 // ======================
 async function updateDashboard() {
 
-    console.log("UPDATE JALAN");
-
     const data = await getSensorData();
-    console.log("DATA:", data);
 
     if (!data) return;
 
-    // 🔥 fallback biar gak nol / NaN
     let ph = parseFloat(data.ph ?? 7);
     let turb = parseFloat(data.turbidity ?? 20);
 
     if (isNaN(ph)) ph = 7;
     if (isNaN(turb)) turb = 20;
 
-    // ======================
-    // ELEMENT
-    // ======================
     const phText = document.getElementById("phText");
     const turbText = document.getElementById("turbText");
     const feedValue = document.getElementById("feedValue");
@@ -81,55 +92,51 @@ async function updateDashboard() {
     const pondCause = document.getElementById("pondCause");
     const pondAction = document.getElementById("pondAction");
 
-    // ======================
-    // ANIMASI ANGKA
-    // ======================
     animateNumber(phText, ph, "", 500);
     animateNumber(turbText, turb, " NTU", 500);
 
-    // ======================
-    // RESET ALERT
-    // ======================
     if (alertBox) {
         alertBox.className = "alert-box";
         alertBox.innerText = "-";
     }
 
-    // ======================
-    // LOGIC RULE
-    // ======================
     let pakan = 2.5;
     let kondisi = "Aman";
     let aksi = "Lanjutkan pemberian pakan";
     let penyebab = "Kondisi stabil";
 
-    // ===== TURBIDITY =====
+    // ======================
+    // TURBIDITY RULE
+    // ======================
     if (turb > 50) {
+
         turbStatus.innerText = "Keruh";
         turbStatus.className = "badge red";
+
         pakan -= 1;
 
         kondisi = "Buruk";
         aksi = "Kurangi pakan & cek air";
         penyebab = "Air terlalu keruh";
 
-        if (alertBox) {
-            alertBox.classList.add("danger");
-            alertBox.innerText = "⚠ Air keruh! Kurangi pakan!";
-        }
-    } 
-    else if (turb > 25) {
+    } else if (turb > 25) {
+
         turbStatus.innerText = "Sedang";
         turbStatus.className = "badge yellow";
+
         pakan -= 0.5;
-    } 
-    else {
+
+    } else {
+
         turbStatus.innerText = "Jernih";
         turbStatus.className = "badge green";
     }
 
-    // ===== PH =====
+    // ======================
+    // PH RULE
+    // ======================
     if (ph < 6.5) {
+
         phStatus.innerText = "Asam";
         phStatus.className = "badge red";
 
@@ -137,16 +144,13 @@ async function updateDashboard() {
         aksi = "Naikkan pH air";
         penyebab = "pH terlalu rendah";
 
-        if (alertBox) {
-            alertBox.classList.add("danger");
-            alertBox.innerText = "⚠ pH terlalu rendah!";
-        }
-    } 
-    else if (ph <= 8) {
+    } else if (ph <= 8) {
+
         phStatus.innerText = "Normal";
         phStatus.className = "badge green";
-    } 
-    else {
+
+    } else {
+
         phStatus.innerText = "Basa";
         phStatus.className = "badge yellow";
 
@@ -155,9 +159,6 @@ async function updateDashboard() {
         penyebab = "pH terlalu tinggi";
     }
 
-    // ======================
-    // UPDATE UI
-    // ======================
     animateNumber(feedValue, pakan, " Kg", 700);
 
     if (topWater) topWater.innerText = kondisi;
@@ -167,9 +168,6 @@ async function updateDashboard() {
     if (pondCause) pondCause.innerText = penyebab;
     if (pondAction) pondAction.innerText = aksi;
 
-    // ======================
-    // UPDATE CHART
-    // ======================
     updateLineChart("chartPh", ph);
     updateLineChart("chartTurb", turb);
     updateBarChart("chartFeed", pakan);
@@ -183,16 +181,19 @@ async function updateDashboard() {
 // ANIMASI ANGKA
 // ======================
 function animateNumber(el, value, suffix = "", duration = 500) {
+
     if (!el) return;
 
     let start = 0;
     let startTime = null;
 
     function step(timestamp) {
+
         if (!startTime) startTime = timestamp;
 
         let progress = timestamp - startTime;
         let percent = Math.min(progress / duration, 1);
+
         let current = start + (value - start) * percent;
 
         el.innerText = current.toFixed(1) + suffix;
@@ -204,18 +205,136 @@ function animateNumber(el, value, suffix = "", duration = 500) {
 }
 
 
+// ======================================================
+// MODAL EDIT SYSTEM
+// ======================================================
+
+// OPEN MODAL
+function openEdit() {
+
+    const modal = document.getElementById("editModal");
+
+    if (modal) modal.style.display = "flex";
+
+    editModalOpen = true;
+}
+
+
+// CLOSE MODAL
+function closeEdit() {
+
+    const modal = document.getElementById("editModal");
+
+    if (modal) modal.style.display = "none";
+
+    editModalOpen = false;
+}
+
+
+// ======================
+// KIRIM DARI EDIT MODAL
+// ======================
+function sendEdit() {
+
+    let value = document.getElementById("manualPakan").value;
+
+    if (!value) {
+
+        alert("Input pakan kosong!");
+
+        return;
+    }
+
+    sendToDB("manual_real", value);
+
+    closeEdit();
+}
+
+
+// ======================
+// KIRIM OTOMATIS
+// ======================
+function kirimPakan() {
+
+    let jam = new Date().getHours();
+
+    let value = document.getElementById("feedValue")
+        .innerText.replace(" Kg", "");
+
+    let type = "";
+
+    if (jam >= 5 && jam <= 10)
+        type = "real_pakan_pagi";
+
+    else if (jam >= 11 && jam <= 14)
+        type = "real_pakan_siang";
+
+    else if (jam >= 15 && jam <= 18)
+        type = "real_pakan_sore";
+
+    else if (jam >= 19 && jam <= 22)
+        type = "real_pakan_malam";
+
+    else {
+
+        alert("Diluar jam pakan");
+
+        return;
+    }
+
+    sendToDB(type, value);
+}
+
+
+// ======================
+// SEND TO DATABASE
+// ======================
+function sendToDB(type, value) {
+
+    fetch("/feeding/kirim", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN":
+                document.querySelector('meta[name="csrf-token"]')
+                .getAttribute('content')
+        },
+
+        body: JSON.stringify({
+            type: type,
+            value: value
+        })
+
+    })
+    .then(res => res.json())
+    .then(res => {
+
+        console.log(res);
+
+        alert("Data berhasil diupdate ke database!");
+
+    })
+    .catch(err => console.log(err));
+}
+
+
 // ======================
 // LINE CHART
 // ======================
 function createLineChart(id, color) {
 
     const canvas = document.getElementById(id);
+
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
 
     charts[id] = new Chart(ctx, {
+
         type: "line",
+
         data: {
             labels: [],
             datasets: [{
@@ -225,8 +344,13 @@ function createLineChart(id, color) {
                 tension: 0.4
             }]
         },
+
         options: {
-            plugins: { legend: { display: false } }
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
         }
     });
 }
@@ -241,6 +365,7 @@ function updateLineChart(id, value) {
     chart.data.datasets[0].data.push(value);
 
     if (chart.data.labels.length > 10) {
+
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
     }
@@ -255,10 +380,13 @@ function updateLineChart(id, value) {
 function createBarChart(id) {
 
     const canvas = document.getElementById(id);
+
     if (!canvas) return;
 
     charts[id] = new Chart(canvas, {
+
         type: "bar",
+
         data: {
             labels: [],
             datasets: [{
@@ -266,8 +394,13 @@ function createBarChart(id) {
                 backgroundColor: "#3498db"
             }]
         },
+
         options: {
-            plugins: { legend: { display: false } }
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
         }
     });
 }
@@ -282,6 +415,7 @@ function updateBarChart(id, value) {
     chart.data.datasets[0].data.push(value);
 
     if (chart.data.labels.length > 10) {
+
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
     }
@@ -296,10 +430,13 @@ function updateBarChart(id, value) {
 function createGauge(id, color) {
 
     const canvas = document.getElementById(id);
+
     if (!canvas) return;
 
     charts[id] = new Chart(canvas, {
+
         type: "doughnut",
+
         data: {
             datasets: [{
                 data: [0, 100],
@@ -307,11 +444,17 @@ function createGauge(id, color) {
                 borderWidth: 0
             }]
         },
+
         options: {
             rotation: -90,
             circumference: 180,
             cutout: "75%",
-            plugins: { legend: { display: false } }
+
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
         }
     });
 }
@@ -322,6 +465,10 @@ function updateGauge(id, value, max) {
 
     const chart = charts[id];
 
-    chart.data.datasets[0].data = [value, max - value];
+    chart.data.datasets[0].data = [
+        value,
+        max - value
+    ];
+
     chart.update();
 }

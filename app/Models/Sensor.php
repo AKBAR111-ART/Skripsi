@@ -8,5 +8,8 @@ class Sensor extends Model
 {
     protected $table = 'sensors';
 
-    protected $fillable = ['ph', 'turbidity'];
+    protected $fillable = [
+        'ph',
+        'turbidity'
+    ];
 }

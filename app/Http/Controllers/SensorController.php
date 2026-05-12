@@ -3,27 +3,40 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Sensor;
+use Illuminate\Support\Facades\DB;
 
 class SensorController extends Controller
 {
-    // ESP32 kirim data ke sini
     public function store(Request $request)
     {
-        $data = Sensor::create([
-            'ph' => $request->ph,
-            'turbidity' => $request->turbidity
-        ]);
+        try {
 
-        return response()->json([
-            'message' => 'OK masuk database',
-            'data' => $data
-        ]);
+            DB::table('sensors')->insert([
+                'ph' => $request->ph,
+                'turbidity' => $request->turbidity,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'INSERT BERHASIL',
+                'ph' => $request->ph,
+                'turbidity' => $request->turbidity
+            ]);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => 'ERROR DATABASE',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // ambil data terbaru (dashboard nanti)
     public function latest()
     {
-        return Sensor::latest()->first();
+        return DB::table('sensors')
+            ->latest('id')
+            ->first();
     }
 }

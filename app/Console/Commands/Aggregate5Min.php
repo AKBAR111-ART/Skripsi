@@ -11,30 +11,30 @@ class Aggregate5Min extends Command
     protected $signature = 'app:aggregate5min';
     protected $description = 'Aggregate sensor data every 5 minutes';
 
-
 public function handle()
-{
-    $from = now()->subMinutes(5);
-    $to = now();
+{  $this->info("Command aggregation 5 menit dijalankan");
+    $end = now();
+    $start = now()->subMinutes(5);
 
-    $data = Sensor::whereBetween('created_at', [$from, $to])->get();
+    // ambil data 5 menit terakhir
+    $data = Sensor::whereBetween('created_at', [$start, $end])->get();
 
-    echo "DATA COUNT: " . $data->count() . "\n";
-
-    if ($data->count() > 0) {
-
-        $avgPh = $data->avg('ph');
-        $avgTurbidity = $data->avg('turbidity');
-
-        Sensor5Min::create([
-            'avg_ph' => $avgPh,
-            'avg_turbidity' => $avgTurbidity,
-            'time_5min' => now(),
-        ]);
-
-        echo "INSERT SUCCESS\n";
-    } else {
-        echo "NO DATA\n";
+    if ($data->count() == 0) {
+        return;
     }
+
+    // hitung rata-rata
+    $avgPh = $data->avg('ph');
+    $avgTurbidity = $data->avg('turbidity');
+
+    // simpan ke tabel 5 menit
+    Sensor5Min::create([
+        'avg_ph' => $avgPh,
+        'avg_turbidity' => $avgTurbidity,
+        'time_5min' => $start
+    ]);
+      
+
+    // proses kamu di sini
 }
 }
