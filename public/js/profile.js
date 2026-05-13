@@ -182,4 +182,28 @@ function resetBudidaya() {
         document.body.appendChild(toast);
 
     });
+        const inputFoto = document.querySelector('input[name="foto_tambak"]');
+
+    if (inputFoto) {
+
+        inputFoto.addEventListener('change', function (e) {
+
+            const file = e.target.files[0];
+
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+
+                const preview = document.getElementById('previewFoto');
+
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+
+            reader.readAsDataURL(file);
+
+        });
+    }
 }

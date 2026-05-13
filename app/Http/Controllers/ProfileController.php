@@ -14,34 +14,89 @@ class ProfileController extends Controller
     public function index5()
     {
         $profile = TambakProfile::first();
+
         return view('dashboard.profile', compact('profile'));
     }
 
     // ======================
-    // UPSERT PROFILE (FIXED)
+    // UPDATE PROFILE + FOTO
     // ======================
     public function update(Request $request)
     {
         $request->validate([
-            'nama_tambak' => 'nullable|string',
-            'lokasi' => 'nullable|string',
-            'luas' => 'nullable|numeric',
-            'tipe_tambak' => 'nullable|string',
+            'nama_tambak'    => 'nullable|string',
+            'lokasi'         => 'nullable|string',
+            'luas'           => 'nullable|numeric',
+            'tipe_tambak'    => 'nullable|string',
             'tanggal_dibuat' => 'nullable|date',
+
+            // FOTO
+            'foto_tambak'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        TambakProfile::updateOrCreate(
-            ['id' => 1], 
-            [
-                'nama_tambak' => $request->nama_tambak,
-                'lokasi' => $request->lokasi,
-                'luas' => $request->luas,
-                'tipe_tambak' => $request->tipe_tambak,
-                'tanggal_dibuat' => $request->tanggal_dibuat,
-            ]
-        );
+        // ======================
+        // AMBIL DATA PERTAMA
+        // ======================
 
-        return back()->with('success', 'Profil berhasil disimpan');
+        $profile = TambakProfile::first();
+
+        // kalau belum ada data
+        if (!$profile) {
+
+            $profile = new TambakProfile();
+
+        }
+
+        // ======================
+        // UPDATE DATA
+        // ======================
+
+        $profile->nama_tambak = $request->nama_tambak;
+        $profile->lokasi = $request->lokasi;
+        $profile->luas = $request->luas;
+        $profile->tipe_tambak = $request->tipe_tambak;
+        $profile->tanggal_dibuat = $request->tanggal_dibuat;
+
+        // ======================
+        // UPLOAD FOTO
+        // ======================
+
+        if ($request->hasFile('foto_tambak')) {
+
+            $file = $request->file('foto_tambak');
+
+            // nama unik
+            $filename = time() . '.' . $file->getClientOriginalExtension();
+
+            // simpan file
+            $file->storeAs('tambak', $filename, 'public');
+
+            // hapus foto lama
+            if ($profile->foto_tambak) {
+
+                $oldPath = storage_path(
+                    'app/public/' . $profile->foto_tambak
+                );
+
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+
+            // simpan path baru
+            $profile->foto_tambak = 'tambak/' . $filename;
+        }
+
+        // ======================
+        // SAVE
+        // ======================
+
+        $profile->save();
+
+        return back()->with(
+            'success',
+            'Profil berhasil diperbarui'
+        );
     }
 
     // ======================
@@ -56,35 +111,51 @@ class ProfileController extends Controller
         $profile = TambakProfile::first();
 
         if (!$profile) {
-            return back()->with('error', 'Profile tidak ditemukan');
+
+            return back()->with(
+                'error',
+                'Profile tidak ditemukan'
+            );
         }
 
-        $profile->tanggal_mulai_budidaya = $request->tanggal_mulai_budidaya;
+        $profile->tanggal_mulai_budidaya =
+            $request->tanggal_mulai_budidaya;
+
         $profile->save();
 
-        return back()->with('success', 'Budidaya berhasil dimulai');
+        return back()->with(
+            'success',
+            'Budidaya berhasil dimulai'
+        );
     }
 
     // ======================
-    // RESET BUDIDAYA (FIXED)
+    // RESET BUDIDAYA
     // ======================
-   public function resetBudidaya()
-{
-    $profile = TambakProfile::first();
+    public function resetBudidaya()
+    {
+        $profile = TambakProfile::first();
 
-    if (!$profile) {
-        return response()->json(['error' => true], 404);
+        if (!$profile) {
+
+            return response()->json([
+                'error' => true
+            ], 404);
+        }
+
+        // reset ke hari ini
+        $profile->tanggal_mulai_budidaya =
+            Carbon::now();
+
+        $profile->save();
+
+        return response()->json([
+            'success' => true,
+            'message' =>
+                'Budidaya berhasil direset ke hari ini'
+        ]);
     }
 
-    $profile->tanggal_mulai_budidaya = Carbon::now(); // 🔥 reset ke hari ini
-    $profile->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Budidaya berhasil direset ke hari ini'
-    ]);
-    
-}
     // ======================
     // UPDATE BIOMASSA
     // ======================
@@ -94,17 +165,23 @@ class ProfileController extends Controller
             'biomassa_udang' => 'required|numeric'
         ]);
 
-        TambakProfile::updateOrCreate(
+        $profile = TambakProfile::first();
 
-            // cari data id 1
-            ['id' => 1],
+        // kalau belum ada data
+        if (!$profile) {
 
-            // update / insert
-            [
-                'biomassa_udang' => $request->biomassa_udang
-            ]
+            $profile = new TambakProfile();
+
+        }
+
+        $profile->biomassa_udang =
+            $request->biomassa_udang;
+
+        $profile->save();
+
+        return back()->with(
+            'success',
+            'Biomassa berhasil disimpan'
         );
-
-        return back()->with('success', 'Biomassa berhasil disimpan');
     }
 }
