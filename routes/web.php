@@ -11,10 +11,13 @@ use App\Http\Controllers\TambakProfileController;
 use App\Http\Controllers\SensorController;
 
 
+
+
+Route::put(
+    '/profile-tambak/biomassa/update',
+    [ProfileController::class, 'updateBiomassa']
+);
 Route::put('/profile-tambak/update', [ProfileController::class, 'update']);
-
-
-
 Route::post('/budidaya/reset', [ProfileController::class, 'resetBudidaya']);
 Route::put('/budidaya/start', [ProfileController::class, 'startBudidaya']);
 Route::put('/profile-tambak/biomassa/update', [ProfileController::class, 'updateBiomassa']);

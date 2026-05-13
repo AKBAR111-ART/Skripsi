@@ -13,6 +13,8 @@ class TambakProfile extends Model
         'lokasi',
         'luas',
         'tipe_tambak',
-        'tanggal_dibuat'
+        'biomassa_udang',
+        'tanggal_dibuat',
+        'tanggal_mulai_budidaya',
     ];
 }

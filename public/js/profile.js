@@ -1,7 +1,24 @@
 document.addEventListener("DOMContentLoaded", function () {
 
     console.log("PROFILE READY");
+    // ======================
+    // AUTO CLOSE TOAST
+    // ======================
+    const toast = document.getElementById("toast");
 
+    if (toast) {
+
+        setTimeout(() => {
+
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(100%)";
+
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+
+        }, 3000);
+    }
     // ======================
     // DASHBOARD INIT
     // ======================
@@ -14,16 +31,6 @@ document.addEventListener("DOMContentLoaded", function () {
         setInterval(updateDashboard, 3000);
     }
 
-    // ======================
-    // PROGRESS BAR
-    // ======================
-    const bar = document.querySelector(".bar");
-    if (bar) {
-        setTimeout(() => {
-            bar.style.width = "56%";
-        }, 300);
-    }
-
 });
 
 
@@ -32,6 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // ======================
 function openEditModal() {
     const modal = document.getElementById('editModal');
+
     if (modal) {
         modal.style.display = 'block';
         document.body.classList.add('modal-open');
@@ -40,6 +48,7 @@ function openEditModal() {
 
 function closeEditModal() {
     const modal = document.getElementById('editModal');
+
     if (modal) {
         modal.style.display = 'none';
         document.body.classList.remove('modal-open');
@@ -52,6 +61,7 @@ function closeEditModal() {
 // ======================
 function openBiomassa() {
     const modal = document.getElementById('biomassaModal');
+
     if (modal) {
         modal.style.display = 'block';
         document.body.classList.add('modal-open');
@@ -60,12 +70,12 @@ function openBiomassa() {
 
 function closeBiomassa() {
     const modal = document.getElementById('biomassaModal');
+
     if (modal) {
         modal.style.display = 'none';
         document.body.classList.remove('modal-open');
     }
 }
-
 
 
 // ======================
@@ -90,6 +100,7 @@ window.addEventListener('click', function (event) {
 
     const editModal = document.getElementById('editModal');
     const biomassaModal = document.getElementById('biomassaModal');
+    const budidayaModal = document.getElementById('budidayaModal');
 
     if (event.target === editModal) {
         closeEditModal();
@@ -99,7 +110,16 @@ window.addEventListener('click', function (event) {
         closeBiomassa();
     }
 
+    if (event.target === budidayaModal) {
+        closeBudidayaModal();
+    }
+
 });
+
+
+// ======================
+// MODAL BUDIDAYA
+// ======================
 function openBudidayaModal() {
     document.getElementById('budidayaModal').style.display = 'block';
     document.body.classList.add('modal-open');
@@ -109,21 +129,57 @@ function closeBudidayaModal() {
     document.getElementById('budidayaModal').style.display = 'none';
     document.body.classList.remove('modal-open');
 }
+
+
+// ======================
+// RESET BUDIDAYA
+// ======================
 function resetBudidaya() {
+
     if (!confirm("Yakin ingin reset masa budidaya?")) return;
 
     fetch('/budidaya/reset', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
         }
     })
     .then(res => res.json())
     .then(data => {
-        alert("Budidaya berhasil direset");
-        location.reload();
+
+        // hapus toast lama
+        const oldToast = document.getElementById("toast");
+        if (oldToast) oldToast.remove();
+
+        // buat toast baru
+        const toast = document.createElement("div");
+
+        toast.id = "toast";
+        toast.className = "toast success";
+        toast.innerHTML = "✅ " + data.message;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(100%)";
+
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+
+        }, 2000);
+
     })
     .catch(err => {
-        alert("Gagal reset budidaya");
+
+        const toast = document.createElement("div");
+
+        toast.className = "toast error";
+        toast.innerHTML = "❌ Gagal reset budidaya";
+
+        document.body.appendChild(toast);
+
     });
 }

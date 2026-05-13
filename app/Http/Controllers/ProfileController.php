@@ -85,4 +85,26 @@ class ProfileController extends Controller
     ]);
     
 }
+    // ======================
+    // UPDATE BIOMASSA
+    // ======================
+    public function updateBiomassa(Request $request)
+    {
+        $request->validate([
+            'biomassa_udang' => 'required|numeric'
+        ]);
+
+        TambakProfile::updateOrCreate(
+
+            // cari data id 1
+            ['id' => 1],
+
+            // update / insert
+            [
+                'biomassa_udang' => $request->biomassa_udang
+            ]
+        );
+
+        return back()->with('success', 'Biomassa berhasil disimpan');
+    }
 }

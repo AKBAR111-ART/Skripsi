@@ -3,7 +3,7 @@
 @section('title', 'Profil Tambak')
 
 @section('content')
-
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="{{ asset('css/profile.css') }}">
 
 @php
@@ -264,7 +264,19 @@
 
     </div>
 </div>
+{{-- ================= TOAST ================= --}}
 
+@if(session('success'))
+    <div class="toast success" id="toast">
+        ✅ {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="toast error" id="toast">
+        ❌ {{ session('error') }}
+    </div>
+@endif
 <script src="{{ asset('js/profile.js') }}"></script>
 
 @endsection
