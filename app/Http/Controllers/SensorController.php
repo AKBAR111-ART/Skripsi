@@ -3,40 +3,88 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\PengaturanTambak;
 
 class SensorController extends Controller
 {
-    public function store(Request $request)
+    public function realtime()
     {
-        try {
+        // =========================
+        // AMBIL RULE DATABASE
+        // =========================
 
-            DB::table('sensors')->insert([
-                'ph' => $request->ph,
-                'turbidity' => $request->turbidity,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+        $rule = PengaturanTambak::first();
 
-            return response()->json([
-                'status' => 'INSERT BERHASIL',
-                'ph' => $request->ph,
-                'turbidity' => $request->turbidity
-            ]);
+        // =========================
+        // DATA SENSOR SEMENTARA
+        // NANTI DARI ESP32
+        // =========================
 
-        } catch (\Exception $e) {
+        $ph = 7.2;
+        $turbidity = 12;
 
-            return response()->json([
-                'status' => 'ERROR DATABASE',
-                'message' => $e->getMessage()
-            ], 500);
+        // =========================
+        // CEK PH
+        // =========================
+
+        if (
+            $ph >= $rule->ph_min_good &&
+            $ph <= $rule->ph_max_good
+        ) {
+
+            $statusPh = 'baik';
+
+        } elseif (
+
+            $ph >= $rule->ph_min_warning &&
+            $ph <= $rule->ph_max_warning
+
+        ) {
+
+            $statusPh = 'warning';
+
+        } else {
+
+            $statusPh = 'bahaya';
         }
-    }
 
-    public function latest()
-    {
-        return DB::table('sensors')
-            ->latest('id')
-            ->first();
+        // =========================
+        // CEK TURBIDITY
+        // =========================
+
+        if (
+            $turbidity >= $rule->turbidity_min_good &&
+            $turbidity <= $rule->turbidity_max_good
+        ) {
+
+            $statusTur = 'baik';
+
+        } elseif (
+
+            $turbidity >= $rule->turbidity_min_warning &&
+            $turbidity <= $rule->turbidity_max_warning
+
+        ) {
+
+            $statusTur = 'warning';
+
+        } else {
+
+            $statusTur = 'bahaya';
+        }
+
+        // =========================
+        // RESPONSE JSON
+        // =========================
+
+        return response()->json([
+
+            'ph' => $ph,
+            'ph_status' => $statusPh,
+
+            'turbidity' => $turbidity,
+            'turbidity_status' => $statusTur,
+
+        ]);
     }
 }

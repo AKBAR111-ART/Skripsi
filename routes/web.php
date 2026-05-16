@@ -9,8 +9,20 @@ use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TambakProfileController;
 use App\Http\Controllers\SensorController;
+use App\Http\Controllers\PengingatController;
+     
 
+Route::get('/sensor/realtime', [SensorController::class, 'realtime']);
+Route::post(
+    '/pengaturan/rule',
+    [PengaturanController::class, 'updateRule']
+);
+Route::post('/pengaturan/update-rule', [PengaturanController::class, 'updateRule']);
 
+Route::post('/pengingat/store', [PengingatController::class, 'store']);
+Route::post('/test-wa', [PengaturanController::class, 'testWa']);
+Route::get('/pengaturan', [PengaturanController::class, 'index']);
+Route::post('/pengaturan/store', [PengaturanController::class, 'store']);
 
 
 Route::put(
@@ -57,3 +69,19 @@ Route::get('/history', [HistoryController::class, 'index2']);
 Route::get('/monitoring', [MonitoringController::class, 'index3']);
 
 Route::get('/profile', [ProfileController::class, 'index5']);
+use Illuminate\Support\Facades\Http;
+
+Route::get('/test-wa', function () {
+
+    $response = Http::withHeaders([
+        'Authorization' => env('FONNTE_TOKEN')
+    ])->post('https://api.fonnte.com/send', [
+
+        'target' => '62895379348181',
+
+        'message' => 'WA Gateway berhasil 🚀'
+
+    ]);
+
+    return $response->body();
+});
