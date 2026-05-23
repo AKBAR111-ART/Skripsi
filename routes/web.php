@@ -1,87 +1,175 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UtamaController;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\HistoryController;
-use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\SensorController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TambakProfileController;
-use App\Http\Controllers\SensorController;
-use App\Http\Controllers\PengingatController;
-     
+use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\FeedingHistoryController;
+use App\Http\Controllers\PengingatJadwalController;
 
+/*
+|--------------------------------------------------------------------------
+| WEB ROUTES (TAMBAK UDANG)
+|--------------------------------------------------------------------------
+*/
+Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+// Route untuk history
+Route::get('/history/week-data/{week}', [HistoryController::class, 'getWeekData']);
+Route::get('/history/day-detail/{date}', [HistoryController::class, 'getDayDetail']);
+// Route untuk API daily monitoring (tanpa prefix api/)
+Route::get('/daily-monitoring-data', [HistoryController::class, 'getDailyMonitoring'])->name('daily-monitoring-data');
+Route::get('/api/daily-monitoring', [HistoryController::class, 'getDailyMonitoring'])->name('api.daily-monitoring');
+Route::get('/monitoring/data', [MonitoringController::class, 'getMonitoringData'])->name('monitoring.data');
+// Route untuk API monitoring (realtime)
+Route::get('/monitoring/realtime', [MonitoringController::class, 'getRealtime']);
+// routes/web.php
+// routes/web.php
+Route::post('/pengaturan/update-rule', [PengaturanController::class, 'updateRule'])->name('pengaturan.update-rule');
+Route::post('/pengaturan/reset-rule', [PengaturanController::class, 'resetRule'])->name('pengaturan.reset-rule');
+Route::get('/pengaturan/get-rule', [PengaturanController::class, 'getLatestRule'])->name('pengaturan.get-rule');
+Route::get('/history-premium/hourly-data', [HistoryController::class, 'getHourlyData']);
+Route::get('/history-premium/detail-5min', [HistoryController::class, 'getDetailPer5Menit']);
+Route::get('/history-premium/week-data', [HistoryController::class, 'getWeekData']);
+Route::get('/history-premium/day-detail', [HistoryController::class, 'getDayDetail']);
+Route::get('/history-premium/export', [HistoryController::class, 'exportData']);
+
+// Route untuk mengirim pakan (POST)
+Route::post('/api/sensor/send-feed-command', [HomeController::class, 'sendFeedCommand'])->name('send.feed.command');
+
+// ========== HISTORY PREMIUM (BARU) ==========
+Route::get('/history-premium', [HistoryController::class, 'index'])->name('history.premium');
+Route::get('/history-premium/week-data', [HistoryController::class, 'getWeekData'])->name('history.premium.week-data');
+Route::get('/history-premium/day-detail', [HistoryController::class, 'getDayDetail'])->name('history.premium.day-detail');
+Route::get('/history-premium/export', [HistoryController::class, 'exportData'])->name('history.premium.export');
+Route::get('/history-premium/hourly-data', [HistoryController::class, 'getHourlyData'])->name('history.premium.hourly');
+Route::get('/history-premium/detail-5min', [HistoryController::class, 'getDetailPer5Menit'])->name('history.premium.detail-5min');
+
+// ========== HISTORY LAMA (TETAP) ==========
+Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+Route::get('/history/week-data', [HistoryController::class, 'getWeekData']);
+Route::get('/history/day-detail', [HistoryController::class, 'getDayDetail']);
+Route::get('/history/export', [HistoryController::class, 'exportData']);
+
+// Method asli Anda tetap bisa diakses
+Route::get('/history2', [HistoryController::class, 'index2'])->name('history.index2');
+
+// ========== DASHBOARD & HOME ==========
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+
+// Route untuk halaman dashboard
+Route::get('/home', [HomeController::class, 'index']);
+
+// ========== API UNTUK DASHBOARD ==========
 Route::get('/sensor/realtime', [SensorController::class, 'realtime']);
-Route::post(
-    '/pengaturan/rule',
-    [PengaturanController::class, 'updateRule']
-);
-Route::post('/pengaturan/update-rule', [PengaturanController::class, 'updateRule']);
+Route::get('/api/sensor/getFeedingRecommendation', [SensorController::class, 'getFeedingRecommendation']);
+Route::get('/api/profile/latest', [HomeController::class, 'getLatestProfileData']);
+Route::post('/api/sensor/send-feed-command', [HomeController::class, 'sendPakan']);
+Route::get('/api/feeding/today', [HomeController::class, 'getTodayFeeding']);
 
-Route::post('/pengingat/store', [PengingatController::class, 'store']);
-Route::post('/test-wa', [PengaturanController::class, 'testWa']);
-Route::get('/pengaturan', [PengaturanController::class, 'index']);
-Route::post('/pengaturan/store', [PengaturanController::class, 'store']);
+// ========== MONITORING ==========
+Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring'); 
 
-
-Route::put(
-    '/profile-tambak/biomassa/update',
-    [ProfileController::class, 'updateBiomassa']
-);
-Route::put('/profile-tambak/update', [ProfileController::class, 'update']);
-Route::post('/budidaya/reset', [ProfileController::class, 'resetBudidaya']);
-Route::put('/budidaya/start', [ProfileController::class, 'startBudidaya']);
-Route::put('/profile-tambak/biomassa/update', [ProfileController::class, 'updateBiomassa']);
-Route::get('/sensor/latest', [SensorController::class, 'latest']);
-
-// ESP32 kirim data
-Route::post('/sensor', [SensorController::class, 'store']);
-
-// Dashboard ambil data realtime
-Route::get('/sensor/latest', [SensorController::class, 'latest']);
-
-
-Route::get('/pengaturan', [PengaturanController::class, 'index']);
-Route::post('/pengaturan/store', [PengaturanController::class, 'store']);
-Route::post('/pengaturan/save', [PengaturanController::class, 'save']);
-Route::get('/pengaturan/history', [PengaturanController::class, 'history']);
-
-
-// API untuk JS
-Route::get('/feeding/history', [PengaturanController::class, 'history']);
-Route::put('/profile-tambak/update', [ProfileController::class, 'update']);
-Route::put('/biomassa/update', [ProfileController::class, 'updateBiomassa']);
-Route::put('/profile-tambak/update', [ProfileController::class, 'update'])->name('profile.update');
-Route::middleware(['auth'])->group(function () {
-Route::get('/profile', [ProfileController::class, 'index5']);});
-Route::put('/biomassa/update', [ProfileController::class, 'updateBiomassa']);
-Route::get('/akbar', function () {
-    return view('welcome');
+// API Monitoring
+Route::prefix('api/monitoring')->group(function () {
+    // Realtime & Stats
+    Route::get('/realtime', [MonitoringController::class, 'getRealtime']);
+    Route::get('/stats', [MonitoringController::class, 'getStats']);
+    
+    // History & Charts
+    Route::get('/history', [MonitoringController::class, 'getMonitoringHistory']);
+    Route::get('/chart-history', [MonitoringController::class, 'getChartHistory']);
+    
+    // Feeding
+    Route::get('/feeding', [MonitoringController::class, 'getFeedingData']);
+    Route::post('/feeding/store', [MonitoringController::class, 'storeFeeding']);
+    
+    // Data rata-rata per 5 menit
+    Route::get('/avg-data', [MonitoringController::class, 'getMonitoringData']);
+    Route::get('/avg-chart', [MonitoringController::class, 'getChartDataFromAvg']);
+    
+    // CRUD
+    Route::post('/store', [MonitoringController::class, 'storeMonitoring']);
+    Route::post('/generate-dummy', [MonitoringController::class, 'generateDummyData']);
 });
 
-
-Route::get('', [UtamaController::class, 'index']);
-Route::get('/', function () {
-    return view('dashboard.home');
+// ========== PROFILE & BUDIDAYA ==========
+Route::prefix('profile-tambak')->group(function () {
+    Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/update', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/biomassa/update', [ProfileController::class, 'updateBiomassa'])->name('profile.update-biomassa');
 });
-Route::get('/history', [HistoryController::class, 'index2']);
-Route::get('/monitoring', [MonitoringController::class, 'index3']);
 
-Route::get('/profile', [ProfileController::class, 'index5']);
-use Illuminate\Support\Facades\Http;
+Route::put('/budidaya/start', [ProfileController::class, 'startBudidaya'])->name('budidaya.start');
+Route::put('/budidaya/reset', [ProfileController::class, 'resetBudidaya'])->name('budidaya.reset');
 
+// ========== PENGATURAN ==========
+Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
+Route::post('/pengaturan/store', [PengaturanController::class, 'store']);
+Route::post('/pengaturan/rule', [PengaturanController::class, 'updateRule']);
+Route::post('/pengaturan/reset', [PengaturanController::class, 'reset']);
+
+// ========== SENSOR ==========
+Route::prefix('sensor')->group(function () {
+    Route::get('/realtime', [SensorController::class, 'realtime'])->name('sensor.realtime');
+    Route::get('/latest', [SensorController::class, 'latest'])->name('sensor.latest');
+    Route::post('/', [SensorController::class, 'store'])->name('sensor.store');
+});
+
+// ========== FEEDING HISTORY ==========
+Route::get('/feeding/history', [FeedingHistoryController::class, 'index'])->name('feeding.history');
+
+// ========== REALTIME DATA ==========
+Route::get('/realtime-data', [SensorController::class, 'realtime'])->name('realtime.data');
+
+// ========== API UMUM ==========
+Route::prefix('api')->group(function () {
+    // Jadwal Pengingat
+    Route::get('/jadwal-list', [PengingatJadwalController::class, 'getJadwal']);
+    Route::post('/jadwal-store', [PengingatJadwalController::class, 'store']);
+    Route::delete('/jadwal-delete/{id}', [PengingatJadwalController::class, 'destroy']);
+    
+    // Realtime data
+    Route::get('/realtime', [HomeController::class, 'getRealtimeData'])->name('api.realtime');
+    
+    // Profile data
+    Route::get('/latest-profile', [HomeController::class, 'getLatestProfileData']);
+    
+    // Pengaturan
+    Route::post('/save-pengaturan', [PengaturanController::class, 'store'])->name('api.save-pengaturan');
+    Route::post('/save-rule', [PengaturanController::class, 'updateRule'])->name('api.save-rule');
+    
+    // Kirim pakan manual
+    Route::post('/send-pakan', [HomeController::class, 'sendPakan'])->name('api.send-pakan');
+    
+    // Feeding history
+    Route::get('/feeding/today', [FeedingHistoryController::class, 'today']);
+    Route::get('/feeding/weekly', [FeedingHistoryController::class, 'weekly']);
+    Route::get('/feeding/monthly', [FeedingHistoryController::class, 'monthly']);
+    Route::get('/feeding/all', [FeedingHistoryController::class, 'all']);
+    Route::post('/feeding/manual', [FeedingHistoryController::class, 'manualFeed']);
+    
+    // Jadwal Pengingat (duplikat? biarkan saja tidak masalah)
+    Route::get('/jadwal-list', [PengingatJadwalController::class, 'getJadwal']);
+    Route::post('/jadwal-store', [PengingatJadwalController::class, 'store']);
+    Route::delete('/jadwal-delete/{id}', [PengingatJadwalController::class, 'destroy']);
+});
+
+// ========== TESTING ==========
 Route::get('/test-wa', function () {
-
     $response = Http::withHeaders([
         'Authorization' => env('FONNTE_TOKEN')
     ])->post('https://api.fonnte.com/send', [
-
         'target' => '62895379348181',
-
         'message' => 'WA Gateway berhasil 🚀'
-
     ]);
-
     return $response->body();
-});
+})->name('test.wa');
+
+Route::get('/akbar', fn() => view('welcome'))->name('welcome');

@@ -1,474 +1,756 @@
-document.addEventListener("DOMContentLoaded", () => {
-
-    console.log("HOME READY");
-
-    initCharts();
-    updateDashboard();
-
-    // REALTIME TIAP 1 DETIK
-    setInterval(updateDashboard, 1000);
-});
-
-
-// ======================
-// GLOBAL CHART STORAGE
-// ======================
+// ==================== HOME.JS - FINAL (ENDPOINT DIPERBAIKI) ====================
 let charts = {};
 
+// ==================== PH SMOOTHING VARIABLES ====================
+let lastStablePH = 7.0;
+let phValueHistory = [];
+let smoothPH = 7.0;
 
-// ======================
-// MODAL STATE
-// ======================
-let editModalOpen = false;
-
-
-// ======================
-// INIT CHART
-// ======================
-function initCharts() {
-
-    createLineChart("chartPh", "#3498db");
-    createLineChart("chartTurb", "#f39c12");
-    createBarChart("chartFeed");
-
-    createGauge("phGauge", "#2ecc71");
-    createGauge("turbGauge", "#f1c40f");
-}
-
-
-// ======================
-// FETCH DATA REALTIME
-// ======================
-async function getSensorData() {
-
-    try {
-
-        // 🔥 FIX REALTIME API
-        const res = await fetch("/sensor/latest");
-
-        const data = await res.json();
-
-        console.log("REALTIME:", data);
-
-        return data;
-
-    } catch (err) {
-
-        console.log("Error ambil data:", err);
-
-        return null;
+// Init All Charts
+function initAllCharts() {
+    console.log("🚀 Init All Charts dipanggil");
+    
+    if (document.getElementById('chartPh')) {
+        createLineChart('chartPh', '#667eea', 'pH');
+        console.log("✅ chartPh dibuat");
     }
-}
-
-
-// ======================
-// UPDATE DASHBOARD
-// ======================
-async function updateDashboard() {
-
-    const data = await getSensorData();
-
-    if (!data) return;
-
-    let ph = parseFloat(data.ph ?? 7);
-    let turb = parseFloat(data.turbidity ?? 20);
-
-    if (isNaN(ph)) ph = 7;
-    if (isNaN(turb)) turb = 20;
-
-    const phText = document.getElementById("phText");
-    const turbText = document.getElementById("turbText");
-    const feedValue = document.getElementById("feedValue");
-
-    const phStatus = document.getElementById("phStatus");
-    const turbStatus = document.getElementById("turbStatus");
-
-    const alertBox = document.getElementById("alertBox");
-
-    const topWater = document.getElementById("topWater");
-    const topStatus = document.getElementById("topStatus");
-
-    const pondCondition = document.getElementById("pondCondition");
-    const pondCause = document.getElementById("pondCause");
-    const pondAction = document.getElementById("pondAction");
-
-    animateNumber(phText, ph, "", 500);
-    animateNumber(turbText, turb, " NTU", 500);
-
-    if (alertBox) {
-        alertBox.className = "alert-box";
-        alertBox.innerText = "-";
+    if (document.getElementById('chartTurb')) {
+        createLineChart('chartTurb', '#f59e0b', 'Turbidity (NTU)');
+        console.log("✅ chartTurb dibuat");
     }
-
-    let pakan = 2.5;
-    let kondisi = "Aman";
-    let aksi = "Lanjutkan pemberian pakan";
-    let penyebab = "Kondisi stabil";
-
-    // ======================
-    // TURBIDITY RULE
-    // ======================
-    if (turb > 50) {
-
-        turbStatus.innerText = "Keruh";
-        turbStatus.className = "badge red";
-
-        pakan -= 1;
-
-        kondisi = "Buruk";
-        aksi = "Kurangi pakan & cek air";
-        penyebab = "Air terlalu keruh";
-
-    } else if (turb > 25) {
-
-        turbStatus.innerText = "Sedang";
-        turbStatus.className = "badge yellow";
-
-        pakan -= 0.5;
-
-    } else {
-
-        turbStatus.innerText = "Jernih";
-        turbStatus.className = "badge green";
+    if (document.getElementById('chartFeed')) {
+        createBarChart('chartFeed', '#10b981', 'Pakan (gram)');
+        console.log("✅ chartFeed dibuat");
     }
-
-    // ======================
-    // PH RULE
-    // ======================
-    if (ph < 6.5) {
-
-        phStatus.innerText = "Asam";
-        phStatus.className = "badge red";
-
-        kondisi = "Bahaya";
-        aksi = "Naikkan pH air";
-        penyebab = "pH terlalu rendah";
-
-    } else if (ph <= 8) {
-
-        phStatus.innerText = "Normal";
-        phStatus.className = "badge green";
-
-    } else {
-
-        phStatus.innerText = "Basa";
-        phStatus.className = "badge yellow";
-
-        kondisi = "Perlu perhatian";
-        aksi = "Turunkan pH";
-        penyebab = "pH terlalu tinggi";
+    if (document.getElementById('phGauge')) {
+        createGauge('phGauge', '#667eea');
+        console.log("✅ phGauge dibuat");
     }
-
-    animateNumber(feedValue, pakan, " Kg", 700);
-
-    if (topWater) topWater.innerText = kondisi;
-    if (topStatus) topStatus.innerText = kondisi;
-
-    if (pondCondition) pondCondition.innerText = kondisi;
-    if (pondCause) pondCause.innerText = penyebab;
-    if (pondAction) pondAction.innerText = aksi;
-
-    updateLineChart("chartPh", ph);
-    updateLineChart("chartTurb", turb);
-    updateBarChart("chartFeed", pakan);
-
-    updateGauge("phGauge", ph, 14);
-    updateGauge("turbGauge", turb, 100);
-}
-
-
-// ======================
-// ANIMASI ANGKA
-// ======================
-function animateNumber(el, value, suffix = "", duration = 500) {
-
-    if (!el) return;
-
-    let start = 0;
-    let startTime = null;
-
-    function step(timestamp) {
-
-        if (!startTime) startTime = timestamp;
-
-        let progress = timestamp - startTime;
-        let percent = Math.min(progress / duration, 1);
-
-        let current = start + (value - start) * percent;
-
-        el.innerText = current.toFixed(1) + suffix;
-
-        if (percent < 1) requestAnimationFrame(step);
+    if (document.getElementById('turbGauge')) {
+        createGauge('turbGauge', '#f59e0b');
+        console.log("✅ turbGauge dibuat");
     }
-
-    requestAnimationFrame(step);
+    
+    console.log("charts object:", charts);
 }
 
-
-// ======================================================
-// MODAL EDIT SYSTEM
-// ======================================================
-
-// OPEN MODAL
-function openEdit() {
-
-    const modal = document.getElementById("editModal");
-
-    if (modal) modal.style.display = "flex";
-
-    editModalOpen = true;
-}
-
-
-// CLOSE MODAL
-function closeEdit() {
-
-    const modal = document.getElementById("editModal");
-
-    if (modal) modal.style.display = "none";
-
-    editModalOpen = false;
-}
-
-
-// ======================
-// KIRIM DARI EDIT MODAL
-// ======================
-function sendEdit() {
-
-    let value = document.getElementById("manualPakan").value;
-
-    if (!value) {
-
-        alert("Input pakan kosong!");
-
-        return;
-    }
-
-    sendToDB("manual_real", value);
-
-    closeEdit();
-}
-
-
-// ======================
-// KIRIM OTOMATIS
-// ======================
-function kirimPakan() {
-
-    let jam = new Date().getHours();
-
-    let value = document.getElementById("feedValue")
-        .innerText.replace(" Kg", "");
-
-    let type = "";
-
-    if (jam >= 5 && jam <= 10)
-        type = "real_pakan_pagi";
-
-    else if (jam >= 11 && jam <= 14)
-        type = "real_pakan_siang";
-
-    else if (jam >= 15 && jam <= 18)
-        type = "real_pakan_sore";
-
-    else if (jam >= 19 && jam <= 22)
-        type = "real_pakan_malam";
-
-    else {
-
-        alert("Diluar jam pakan");
-
-        return;
-    }
-
-    sendToDB(type, value);
-}
-
-
-// ======================
-// SEND TO DATABASE
-// ======================
-function sendToDB(type, value) {
-
-    fetch("/feeding/kirim", {
-
-        method: "POST",
-
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN":
-                document.querySelector('meta[name="csrf-token"]')
-                .getAttribute('content')
-        },
-
-        body: JSON.stringify({
-            type: type,
-            value: value
-        })
-
-    })
-    .then(res => res.json())
-    .then(res => {
-
-        console.log(res);
-
-        alert("Data berhasil diupdate ke database!");
-
-    })
-    .catch(err => console.log(err));
-}
-
-
-// ======================
-// LINE CHART
-// ======================
-function createLineChart(id, color) {
-
+// Create Line Chart Premium
+function createLineChart(id, color, label) {
     const canvas = document.getElementById(id);
-
     if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-
+    if (charts[id]) charts[id].destroy();
+    
+    const ctx = canvas.getContext('2d');
     charts[id] = new Chart(ctx, {
-
-        type: "line",
-
+        type: 'line',
         data: {
             labels: [],
             datasets: [{
+                label: label,
                 data: [],
                 borderColor: color,
-                backgroundColor: "transparent",
-                tension: 0.4
+                backgroundColor: color + '15',
+                borderWidth: 2.5,
+                pointRadius: 4,
+                pointBackgroundColor: color,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: color,
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                shadowOffsetX: 2,
+                shadowOffsetY: 2,
+                shadowBlur: 4,
+                shadowColor: color + '40'
             }]
         },
-
         options: {
+            responsive: true,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
-                    display: false
+                    position: 'top',
+                    labels: {
+                        font: { size: 11, family: "'Inter', sans-serif", weight: '500' },
+                        color: '#4a5568',
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#e2e8f0',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            let value = context.raw;
+                            return `${label}: ${value.toFixed(2)}`;
+                        }
+                    }
                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false,
+                        lineWidth: 1
+                    },
+                    ticks: {
+                        font: { size: 10, family: "'Inter', sans-serif" },
+                        color: '#6b7280',
+                        stepSize: 2,
+                        callback: function(value) {
+                            return value.toFixed(1);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: label,
+                        font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
+                        color: '#6b7280'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: { size: 9, family: "'Inter', sans-serif" },
+                        color: '#6b7280',
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            },
+            elements: {
+                line: {
+                    borderJoin: 'round',
+                    borderCap: 'round'
+                }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
             }
         }
     });
 }
 
-function updateLineChart(id, value) {
-
-    if (!charts[id]) return;
-
-    const chart = charts[id];
-
-    chart.data.labels.push("");
-    chart.data.datasets[0].data.push(value);
-
-    if (chart.data.labels.length > 10) {
-
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
-
-    chart.update();
-}
-
-
-// ======================
-// BAR CHART
-// ======================
-function createBarChart(id) {
-
+// Create Bar Chart Premium
+function createBarChart(id, color, label) {
     const canvas = document.getElementById(id);
-
     if (!canvas) return;
-
-    charts[id] = new Chart(canvas, {
-
-        type: "bar",
-
+    if (charts[id]) charts[id].destroy();
+    
+    const ctx = canvas.getContext('2d');
+    charts[id] = new Chart(ctx, {
+        type: 'bar',
         data: {
-            labels: [],
+            labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
             datasets: [{
-                data: [],
-                backgroundColor: "#3498db"
+                label: label,
+                data: [0, 0, 0, 0, 0, 0, 0],
+                backgroundColor: color,
+                borderRadius: 12,
+                borderSkipped: false,
+                barPercentage: 0.65,
+                categoryPercentage: 0.8,
+                shadowOffsetX: 2,
+                shadowOffsetY: 2,
+                shadowBlur: 4,
+                shadowColor: color + '40'
             }]
         },
-
         options: {
+            responsive: true,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
-                    display: false
+                    position: 'top',
+                    labels: {
+                        font: { size: 11, family: "'Inter', sans-serif", weight: '500' },
+                        color: '#4a5568',
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#e2e8f0',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw.toLocaleString()} gram`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: { size: 10, family: "'Inter', sans-serif" },
+                        color: '#6b7280',
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Gram',
+                        font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
+                        color: '#6b7280'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: { size: 11, family: "'Inter', sans-serif", weight: '500' },
+                        color: '#4a5568'
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 5
                 }
             }
         }
     });
 }
 
-function updateBarChart(id, value) {
-
-    if (!charts[id]) return;
-
-    const chart = charts[id];
-
-    chart.data.labels.push("");
-    chart.data.datasets[0].data.push(value);
-
-    if (chart.data.labels.length > 10) {
-
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+// Update Line Chart
+function updateLineChart(chartId, newValue) {
+    if (!charts[chartId]) {
+        if (chartId === 'chartPh') createLineChart('chartPh', '#667eea', 'pH');
+        if (chartId === 'chartTurb') createLineChart('chartTurb', '#f59e0b', 'Turbidity (NTU)');
+        return;
     }
-
-    chart.update();
+    
+    const now = new Date();
+    const timeLabel = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    
+    charts[chartId].data.labels.push(timeLabel);
+    charts[chartId].data.datasets[0].data.push(newValue);
+    
+    if (charts[chartId].data.labels.length > 15) {
+        charts[chartId].data.labels.shift();
+        charts[chartId].data.datasets[0].data.shift();
+    }
+    
+    charts[chartId].update({
+        duration: 300,
+        easing: 'easeInOutQuart'
+    });
 }
 
+// Update Bar Chart
+function updateBarChart(value) {
+    if (!charts['chartFeed']) return;
+    const chart = charts['chartFeed'];
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.datasets[0].data.length > 7) {
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update({
+        duration: 300,
+        easing: 'easeInOutQuart'
+    });
+}
 
-// ======================
-// GAUGE
-// ======================
+// Gauge
 function createGauge(id, color) {
-
     const canvas = document.getElementById(id);
-
     if (!canvas) return;
-
-    charts[id] = new Chart(canvas, {
-
-        type: "doughnut",
-
-        data: {
-            datasets: [{
-                data: [0, 100],
-                backgroundColor: [color, "#ecf0f1"],
-                borderWidth: 0
-            }]
+    if (charts[id]) charts[id].destroy();
+    
+    let maxValue = 100;
+    if (id === 'phGauge') maxValue = 14;
+    if (id === 'turbGauge') maxValue = 100;
+    
+    const ctx = canvas.getContext('2d');
+    charts[id] = new Chart(ctx, {
+        type: 'doughnut',
+        data: { 
+            datasets: [{ 
+                data: [0, maxValue], 
+                backgroundColor: [color, '#e5e7eb'], 
+                borderWidth: 0, 
+                borderRadius: 10 
+            }] 
         },
-
-        options: {
-            rotation: -90,
-            circumference: 180,
-            cutout: "75%",
-
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+        options: { 
+            rotation: -90, 
+            circumference: 180, 
+            cutout: '70%', 
+            responsive: true, 
+            plugins: { 
+                legend: { display: false }, 
+                tooltip: { enabled: false } 
+            } 
         }
     });
 }
 
-function updateGauge(id, value, max) {
-
-    if (!charts[id]) return;
-
-    const chart = charts[id];
-
-    chart.data.datasets[0].data = [
-        value,
-        max - value
-    ];
-
-    chart.update();
+function updateGauge(id, value, maxValue) {
+    console.log("📊 updateGauge dipanggil:", id, "value:", value, "max:", maxValue);
+    
+    if (!charts[id]) {
+        console.error("❌ Chart dengan id", id, "tidak ditemukan!");
+        return;
+    }
+    
+    let val = Math.min(Math.max(value, 0), maxValue);
+    console.log("📊 Nilai setelah constrain:", val);
+    
+    charts[id].data.datasets[0].data = [val, maxValue - val];
+    charts[id].update();
+    console.log("✅ Gauge", id, "diupdate");
 }
+
+// ==================== UPDATE PH - FINAL VERSION ====================
+let phMovingBuffer = [];
+
+function updatePH(ph, status) {
+    const phText = document.getElementById('phText');
+    const phStatus = document.getElementById('phStatus');
+    
+    let phValue = parseFloat(ph);
+    if (isNaN(phValue)) phValue = 7.0;
+    phValue = Math.min(Math.max(phValue, 0), 14);
+    
+    // Moving average 3 data
+    phMovingBuffer.push(phValue);
+    if (phMovingBuffer.length > 3) phMovingBuffer.shift();
+    
+    let sum = 0;
+    for (let i = 0; i < phMovingBuffer.length; i++) sum += phMovingBuffer[i];
+    let smoothValue = sum / phMovingBuffer.length;
+    
+    // Update teks
+    if (phText) phText.innerHTML = smoothValue.toFixed(2);
+    
+    // Update status badge
+    if (phStatus) {
+        const statusText = status || 'normal';
+        phStatus.innerHTML = capitalize(statusText);
+        phStatus.className = `status-badge ${getStatusClass(statusText)}`;
+    }
+    
+    // Update gauge
+    if (charts['phGauge']) {
+        updateGauge('phGauge', smoothValue, 14);
+    }
+}
+// ==================== UPDATE TURBIDITY ====================
+function updateTurbidity(turbidity, status) {
+    const turbText = document.getElementById('turbText');
+    const turbStatus = document.getElementById('turbStatus');
+    
+    let turbValue = parseFloat(turbidity || 0);
+    
+    // Validasi range
+    if (turbValue < 0) turbValue = 0;
+    if (turbValue > 1000) turbValue = 1000;
+    
+    // Update teks
+    if (turbText) {
+        turbText.innerHTML = Math.round(turbValue) + ' NTU';
+    }
+    
+    // Update status badge
+    if (turbStatus) {
+        const statusText = status || 'normal';
+        turbStatus.innerHTML = capitalize(statusText);
+        turbStatus.className = `status-badge ${getStatusClass(statusText)}`;
+    }
+    
+    // Update gauge (max 100 NTU untuk tampilan)
+    let displayValue = Math.min(turbValue, 100);
+    if (charts['turbGauge']) {
+        updateGauge('turbGauge', displayValue, 100);
+    }
+}
+
+function updateTopBar(data) {
+    const topWater = document.getElementById('topWater');
+    if (topWater && data) {
+        topWater.innerHTML = `pH ${data.ph || 0} | NTU ${data.turbidity || 0}`;
+    }
+}
+
+// ==================== LOAD REALTIME ====================
+async function loadRealtime() {
+    try {
+        const response = await fetch('/sensor/realtime');
+        
+        if (!response.ok) {
+            console.error("API response error:", response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log("Realtime data received:", data);
+        
+        if (!data || typeof data.ph === 'undefined') {
+            console.error("Invalid data format:", data);
+            return;
+        }
+        
+        updatePH(data.ph, data.ph_status || 'normal');
+        updateTurbidity(data.turbidity, data.turbidity_status || 'normal');
+        updateTopBar(data);
+        updateLineChart('chartPh', parseFloat(data.ph));
+        updateLineChart('chartTurb', parseFloat(data.turbidity));
+        updateAlertBox(data);
+        updateStatusKondisiTambak();
+        
+    } catch (err) {
+        console.error("Realtime error:", err.message);
+    }
+}
+
+function updateAlertBox(data) {
+    const alertBox = document.getElementById('alertBox');
+    if (!alertBox) return;
+    const isBahaya = data.ph_status === 'bahaya' || data.turbidity_status === 'bahaya';
+    const isPeringatan = data.ph_status === 'peringatan' || data.turbidity_status === 'peringatan';
+    if (isBahaya) {
+        alertBox.className = 'alert-premium danger';
+        alertBox.innerHTML = '<i class="fas fa-skull-crosswalk"></i> ⚠️ KONDISI TAMBAK BAHAYA! Segera lakukan tindakan!';
+    } else if (isPeringatan) {
+        alertBox.className = 'alert-premium warning';
+        alertBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ⚠️ PERINGATAN: Kualitas air mulai tidak stabil. Harap periksa!';
+    } else {
+        alertBox.className = 'alert-premium normal';
+        alertBox.innerHTML = '<i class="fas fa-check-circle"></i> ✅ Kondisi tambak stabil. Kualitas air dalam batas normal.';
+    }
+}
+
+async function updateStatusKondisiTambak() {
+    try {
+        const response = await fetch('/sensor/realtime');
+        const data = await response.json();
+        
+        let statusText = '';
+        let statusColor = '';
+        let statusDetail = '';
+        
+        const isBahaya = data.ph_status === 'bahaya' || data.turbidity_status === 'bahaya';
+        const isPeringatan = data.ph_status === 'peringatan' || data.turbidity_status === 'peringatan';
+        
+        if (isBahaya) {
+            statusText = 'BAHAYA';
+            statusColor = '#dc2626';
+            statusDetail = `⚠️ pH: ${data.ph} (${data.ph_status}) | NTU: ${data.turbidity} (${data.turbidity_status})`;
+        } else if (isPeringatan) {
+            statusText = 'PERINGATAN';
+            statusColor = '#f59e0b';
+            statusDetail = `⚠️ pH: ${data.ph} (${data.ph_status}) | NTU: ${data.turbidity} (${data.turbidity_status})`;
+        } else {
+            statusText = 'AMAN';
+            statusColor = '#10b981';
+            statusDetail = `✅ pH: ${data.ph} (optimal) | NTU: ${data.turbidity} (normal)`;
+        }
+        
+        const statusElement = document.getElementById('statusKondisiTambak');
+        const statusDetailElement = document.getElementById('statusDetail');
+        
+        if (statusElement) {
+            statusElement.innerHTML = statusText;
+            statusElement.style.color = statusColor;
+        }
+        if (statusDetailElement) {
+            statusDetailElement.innerHTML = statusDetail;
+        }
+        
+    } catch (error) {
+        console.error("Error update status kondisi tambak:", error);
+    }
+}
+
+// ==================== LOAD ESTIMASI PAKAN ====================
+async function loadEstimasiPakan() {
+    console.log("Loading estimasi pakan...");
+    
+    try {
+        const response = await fetch('/api/sensor/getFeedingRecommendation');
+        const data = await response.json();
+        
+        console.log("Response API:", data);
+        
+        if (data.success && data.data) {
+            const feedValue = document.getElementById('feedValue');
+            if (feedValue) {
+                feedValue.innerHTML = data.data.pakan_rekomendasi_kg + ' kg';
+            }
+        } else {
+            console.log("Data tidak lengkap:", data);
+            const feedValue = document.getElementById('feedValue');
+            if (feedValue) feedValue.innerHTML = '0 kg';
+        }
+    } catch (error) {
+        console.error("Error loading estimasi:", error);
+        const feedValue = document.getElementById('feedValue');
+        if (feedValue) feedValue.innerHTML = '0 kg';
+    }
+}
+
+// ==================== FUNGSI LAINNYA ====================
+async function updateAkumulasiPakanHariIni() {
+    console.log("Update akumulasi pakan - endpoint perlu dibuat");
+}
+
+async function loadFeedingHistory() {
+    console.log("Load feeding history - endpoint perlu dibuat");
+}
+
+function loadLatestProfileData() {
+    fetch('/api/profile/latest')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const populasiElement = document.querySelector('.stat-card:last-child .stat-info h3');
+                if (populasiElement) {
+                    populasiElement.innerHTML = data.populasi.toLocaleString() + ' <span>ekor</span>';
+                }
+                const beratElement = document.getElementById('beratRata');
+                if (beratElement) beratElement.innerHTML = data.avg_weight + ' gram';
+                const biomassaElement = document.getElementById('biomassa');
+                if (biomassaElement) biomassaElement.innerHTML = data.biomassa_kg + ' kg';
+                const umurElement = document.getElementById('umurMinggu');
+                if (umurElement) umurElement.innerHTML = data.umur_minggu + ' Minggu';
+            }
+        })
+        .catch(error => console.error('Error loading profile data:', error));
+}
+
+// Kirim Pakan Otomatis
+async function kirimPakan() {
+    const feedValueElement = document.getElementById('feedValue');
+    let pakanText = feedValueElement ? feedValueElement.innerText : '0';
+    let pakanKg = parseFloat(pakanText);
+    let pakanGram = pakanKg * 1000;
+    
+    if (isNaN(pakanGram) || pakanGram <= 0) {
+        showToast("❌ Jumlah pakan tidak valid", "error");
+        return;
+    }
+    
+    const jam = new Date().getHours();
+    let jadwal = 'sore';
+    if (jam >= 5 && jam < 11) jadwal = 'pagi';
+    else if (jam >= 11 && jam < 15) jadwal = 'siang';
+    
+    const btn = event?.target;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+    }
+    
+    try {
+        const response = await fetch('/api/sensor/send-feed-command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                pakan: pakanGram,
+                jadwal: jadwal,
+                sumber: 'estimasi'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, "success");
+            setTimeout(() => {
+                loadTodayFeeding();
+                loadEstimasiPakan();
+            }, 500);
+        } else {
+            showToast(result.message || "❌ Gagal mengirim pakan", "error");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        showToast("❌ Gagal mengirim pakan: " + error.message, "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pakan';
+        }
+    }
+}
+
+// Kirim Pakan Manual (Modal)
+async function sendEdit() {
+    const input = document.getElementById('manualPakan');
+    
+    if (!input) {
+        console.error("Element dengan id 'manualPakan' tidak ditemukan!");
+        showToast("❌ Error: Input tidak ditemukan", "error");
+        return;
+    }
+    
+    let rawValue = input.value.trim();
+    console.log("Raw value:", rawValue);
+    
+    if (rawValue === "") {
+        showToast("❌ Jumlah pakan tidak boleh kosong", "error");
+        return;
+    }
+    
+    let pakanGram = parseFloat(rawValue);
+    console.log("Parsed value:", pakanGram);
+    
+    if (isNaN(pakanGram)) {
+        showToast("❌ Masukkan angka yang valid", "error");
+        return;
+    }
+    
+    if (pakanGram <= 0) {
+        showToast("❌ Jumlah pakan minimal 1 gram", "error");
+        return;
+    }
+    
+    if (pakanGram > 10000) {
+        showToast("❌ Jumlah pakan maksimal 10.000 gram (10 kg)", "error");
+        return;
+    }
+    
+    const jam = new Date().getHours();
+    let jadwal = 'sore';
+    if (jam >= 5 && jam < 11) jadwal = 'pagi';
+    else if (jam >= 11 && jam < 15) jadwal = 'siang';
+    
+    const btn = document.querySelector('#editModal .btn-primary');
+    const originalText = btn ? btn.innerHTML : 'Kirim';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+    }
+    
+    try {
+        const response = await fetch('/api/sensor/send-feed-command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                pakan: pakanGram,
+                jadwal: jadwal,
+                sumber: 'manual'
+            })
+        });
+        
+        const result = await response.json();
+        console.log("Response:", result);
+        
+        if (result.success) {
+            showToast(result.message, "success");
+            input.value = '';
+            closeEdit();
+            
+            setTimeout(() => {
+                if (typeof loadTodayFeeding === 'function') loadTodayFeeding();
+                if (typeof loadEstimasiPakan === 'function') loadEstimasiPakan();
+            }, 500);
+        } else {
+            showToast(result.message || "❌ Gagal mengirim pakan", "error");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        showToast("❌ Gagal mengirim pakan: " + error.message, "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+// Modal
+function openEdit() { document.getElementById('editModal').classList.add('show'); }
+function closeEdit() { document.getElementById('editModal').classList.remove('show'); }
+
+// Helper
+function capitalize(str) {
+    if (!str) return 'Normal';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function getStatusClass(status) {
+    const map = { 
+        'baik': 'baik',
+        'aman': 'baik', 
+        'normal': 'baik',
+        'peringatan': 'peringatan',
+        'warning': 'peringatan',
+        'bahaya': 'bahaya',
+        'danger': 'bahaya'
+    };
+    return map[status?.toLowerCase()] || 'baik';
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<div class="toast-content"><span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span></div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// ==================== INIT ====================
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => { initAllCharts(); loadRealtime(); }, 100);
+    
+    loadEstimasiPakan();
+    updateAkumulasiPakanHariIni();
+    loadFeedingHistory();
+    loadLatestProfileData();
+    updateStatusKondisiTambak();
+    
+    setInterval(loadRealtime, 3000);
+    setInterval(loadEstimasiPakan, 10000);
+    setInterval(updateAkumulasiPakanHariIni, 10000);
+    setInterval(loadFeedingHistory, 30000);
+    setInterval(loadLatestProfileData, 30000);
+    setInterval(updateStatusKondisiTambak, 3000);
+});
+
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target === modal) closeEdit();
+};

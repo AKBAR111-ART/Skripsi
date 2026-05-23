@@ -15,422 +15,437 @@
         : null;
 
     $today = Carbon::now();
-
     $days = $start ? max(0, (int) $start->diffInDays($today)) : 0;
-
     $total = 90;
-
     $percent = $start ? min(($days / $total) * 100, 100) : 0;
-
-    $estimasiPanen = $start
-        ? $start->copy()->addDays(90)->format('d M Y')
-        : '-';
+    $estimasiPanen = $start ? $start->copy()->addDays(90)->format('d M Y') : '-';
+    
+    $populasi = $profile->populasi ?? 5000;
+    $avgWeight = $profile->avg_weight ?? 15;
+    $biomassaKg = ($populasi * $avgWeight) / 1000;
+    
+    $umurMinggu = $start ? max(1, ceil($days / 7)) : 1;
+    $tabelPakan = [1=>0.5,2=>1.0,3=>2.0,4=>3.0,5=>4.5,6=>6.0,7=>8.0,8=>10.0,9=>12.5,10=>15.0,11=>18.0,12=>21.0,13=>25.0];
+    $pakanPerEkor = $tabelPakan[$umurMinggu] ?? (25.0 + (($umurMinggu - 13) * 3.5));
+    $pakanPerHariGram = $populasi * $pakanPerEkor;
+    $pakanPerHariKg = round($pakanPerHariGram / 1000, 2);
+    
+    // 🔥 PAKAN HARI INI (dari database feeding_records) - dalam KG
+    use App\Models\FeedingRecord;
+    $pakanHariIniKg = FeedingRecord::whereDate('created_at', today())->sum('pakan_kg');
+    $pakanHariIniGram = FeedingRecord::whereDate('created_at', today())->sum('target_gram');
 @endphp
 
 <div class="profile-container">
 
-    <!-- HEADER -->
-    <div class="profile-header">
-
-        <div class="left">
-
-            <div class="profile-icon">
-                <img src="{{ asset('images/profile1.jpg') }}" alt="">
+    <!-- HERO SECTION (Tanpa Button Edit) -->
+    <div class="profile-hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="hero-icon">
+                <img src="{{ asset('images/pengaturan.png') }}" alt="Profile Icon">
             </div>
-
-            <div class="header-tex">
-                <h2>Profil Tambak</h2>
-                <p>Informasi dan kondisi umum tambak udang Anda.</p>
+            <div class="hero-text">
+                <h1>Profil Tambak</h1>
+                <p>Kelola informasi dan pantau perkembangan budidaya udang Anda</p>
             </div>
+        </div>
+    </div>
 
+    <!-- STATS CARD (4 Card) -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🦐</div>
+            <div class="stat-info">
+                <h3>{{ number_format($populasi) }}</h3>
+                <p>Populasi Udang</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⚖️</div>
+            <div class="stat-info">
+                <h3>{{ number_format($avgWeight, 2) }} <span>gram</span></h3>
+                <p>Berat Rata-rata</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <h3>{{ number_format($biomassaKg, 2) }} <span>kg</span></h3>
+                <p>Biomassa Total</p>
+            </div>
+        </div>
+        <!-- 🔥 CARD PAKAN PER HARI (dalam KG, sinkron dengan Home) -->
+        <div class="stat-card">
+            <div class="stat-icon">🍽️</div>
+            <div class="stat-info">
+                <h3 id="pakanHariIniProfile">{{ number_format($pakanHariIniKg, 2) }} <span>kg</span></h3>
+                <p>Pakan Hari Ini</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT GRID - 2 KOLOM (Informasi Tambak + Foto Tambak) -->
+    <div class="content-grid-two">
+        
+        <!-- KIRI: Informasi Tambak (DENGAN TOMBOL EDIT DI BAWAH) -->
+        <div class="info-card-elegant">
+            <div class="card-header-elegant">
+                <div class="header-icon">
+                    <i class="fas fa-water"></i>
+                </div>
+                <div>
+                    <h3>Informasi Tambak</h3>
+                    <p>Data detail lokasi dan spesifikasi tambak</p>
+                </div>
+            </div>
+            <div class="card-body-elegant">
+                <div class="info-row-elegant">
+                    <div class="info-label">
+                        <i class="fas fa-tag"></i>
+                        <span>Nama Tambak</span>
+                    </div>
+                    <div class="info-value">{{ $profile->nama_tambak ?? '-' }}</div>
+                </div>
+                <div class="info-row-elegant">
+                    <div class="info-label">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Lokasi</span>
+                    </div>
+                    <div class="info-value">{{ $profile->lokasi ?? '-' }}</div>
+                </div>
+                <div class="info-row-elegant">
+                    <div class="info-label">
+                        <i class="fas fa-expand-alt"></i>
+                        <span>Luas Tambak</span>
+                    </div>
+                    <div class="info-value">{{ number_format($profile->luas ?? 0, 0) }} m²</div>
+                </div>
+                <div class="info-row-elegant">
+                    <div class="info-label">
+                        <i class="fas fa-tint"></i>
+                        <span>Tipe Tambak</span>
+                    </div>
+                    <div class="info-value">{{ $profile->tipe_tambak ?? '-' }}</div>
+                </div>
+                <div class="info-row-elegant">
+                    <div class="info-label">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Tanggal Dibuat</span>
+                    </div>
+                    <div class="info-value">{{ $profile->tanggal_dibuat ?? '-' }}</div>
+                </div>
+            </div>
+            <!-- 🔥 TOMBOL EDIT DI BAWAH CARD -->
+            <div class="card-footer-elegant">
+                <button class="edit-btn-full" onclick="openEditModal()">
+                    <i class="fas fa-pen"></i> Edit Profil Tambak
+                </button>
+            </div>
         </div>
 
-        <button class="edit-btn" onclick="openEditModal()">
-            ✏️ Edit Profil
-        </button>
+        <!-- KANAN: Foto Tambak (ELEGAN) -->
+        <div class="photo-card-elegant">
+            <div class="card-header-elegant">
+                <div class="header-icon">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <div>
+                    <h3>Foto Tambak</h3>
+                    <p>Dokumentasi visual kondisi tambak</p>
+                </div>
+            </div>
+            <div class="photo-container-elegant">
+                <img src="{{ $profile && $profile->foto_tambak ? asset('storage/' . $profile->foto_tambak) : asset('images/tambak4.jpeg') }}" alt="Tambak">
+                <div class="photo-overlay">
+                    <span class="photo-badge">
+                        <i class="fas fa-image"></i> Tambak
+                    </span>
+                </div>
+            </div>
+        </div>
 
     </div>
 
-    <!-- CARD UTAMA -->
-    <div class="main-card">
+   <!-- BOTTOM GRID: Kualitas Air & Budidaya -->
+<div class="bottom-grid">
 
-        <!-- ================= FOTO ================= -->
-        <div class="image-box">
-
-            <img src="{{ $profile && $profile->foto_tambak
-                    ? asset('storage/' . $profile->foto_tambak)
-                    : asset('images/tambak4.jpeg') }}"
-                 alt="Tambak">
-
+    <!-- KUALITAS AIR CARD -->
+    <div class="quality-card">
+        <div class="card-header">
+            <span class="card-icon">💧</span>
+            <h3>Kualitas Air</h3>
+            <span class="live-badge">LIVE</span>
         </div>
-
-        <!-- ================= INFO ================= -->
-        <div class="info-box">
-
-            <h3>Informasi Tambak</h3>
-
-            <div class="info-item">
-                <span>Nama Tambak</span>
-                <b>{{ $profile->nama_tambak ?? '-' }}</b>
-            </div>
-
-            <div class="info-item">
-                <span>Lokasi</span>
-                <b>{{ $profile->lokasi ?? '-' }}</b>
-            </div>
-
-            <div class="info-item">
-                <span>Luas Tambak</span>
-                <b>{{ $profile->luas ?? 0 }} m²</b>
-            </div>
-
-            <div class="info-item">
-                <span>Tipe Tambak</span>
-                <b>{{ $profile->tipe_tambak ?? '-' }}</b>
-            </div>
-
-            <div class="info-item">
-                <span>Biomassa Udang</span>
-                <b>{{ $profile->biomassa_udang ?? 0 }} gram</b>
-            </div>
-
-            <div class="info-item">
-                <span>Tanggal Dibuat</span>
-                <b>{{ $profile->tanggal_dibuat ?? '-' }}</b>
-            </div>
-
-        </div>
-
-        <!-- ================= RINGKASAN ================= -->
-        <div class="summary-box">
-
-            <h3>Ringkasan</h3>
-
-            <div class="summary-card">
-
-                <div class="row">
-                    <div class="icon">💧</div>
-
-                    <div>
-                        <p>pH Air</p>
-                        <b>7.82</b>
-                    </div>
-
-                    <span class="status normal">Normal</span>
+        <div class="quality-items">
+            <div class="quality-item">
+                <div class="quality-icon">💧</div>
+                <div class="quality-info">
+                    <span class="quality-label">pH Air</span>
+                    <span class="quality-value" id="qualityPh">7.82</span>
+                    <span class="quality-status" id="qualityPhStatus">Normal</span>
                 </div>
-
-                <div class="row">
-                    <div class="icon">⚪</div>
-
-                    <div>
-                        <p>Turbidity</p>
-                        <b>35 NTU</b>
-                    </div>
-
-                    <span class="status normal">Normal</span>
-                </div>
-
             </div>
-
+            <div class="quality-item">
+                <div class="quality-icon">⚪</div>
+                <div class="quality-info">
+                    <span class="quality-label">Turbidity</span>
+                    <span class="quality-value" id="qualityTurb">35 NTU</span>
+                    <span class="quality-status" id="qualityTurbStatus">Normal</span>
+                </div>
+            </div>
         </div>
-
+      <div class="param-buttons">
+    <button onclick="kalibrasiPH()" class="param-btn">
+        <i class="fas fa-microscope"></i> Kalibrasi pH
+    </button>
+    <button onclick="kalibrasiTurbidity()" class="param-btn">
+        <i class="fas fa-microscope"></i> Kalibrasi Turbidity
+    </button>
+</div>
     </div>
 
-    <!-- ================= PARAMETER ================= -->
-    <div class="bottom-grid">
-
-        <div class="card">
-
-            <h3>Parameter yang Digunakan</h3>
-
-            <div class="param-item">
-
-                <div class="left">
-                    💧
-                    <div>
-                        <b>pH Air</b>
-                        <p>Tingkat keasaman air tambak.</p>
-                    </div>
-                </div>
-
-                <button onclick="kalibrasi('pH')">
-                    Kalibrasi
-                </button>
-
-            </div>
-
-            <div class="param-item">
-
-                <div class="left">
-                    ⚪
-                    <div>
-                        <b>Turbidity</b>
-                        <p>Kekeruhan air tambak.</p>
-                    </div>
-                </div>
-
-                <button onclick="kalibrasi('Turbidity')">
-                    Kalibrasi
-                </button>
-
-            </div>
-
-            <div class="param-item">
-
-                <div class="left">
-                    🦐
-                    <div>
-                        <b>Biomassa Udang</b>
-                        <p>Estimasi berat total udang.</p>
-                    </div>
-                </div>
-
-                <button onclick="openBiomassa()">
-                    Edit
-                </button>
-
-            </div>
-
-        </div>
-
-        <!-- ================= BUDIDAYA ================= -->
-        <div class="card">
-
+    <!-- MASA BUDIDAYA CARD -->
+    <div class="budidaya-card">
+        <div class="card-header">
+            <span class="card-icon">📅</span>
             <h3>Masa Budidaya</h3>
-
-            @if(!$profile || !$start)
-
-                <button class="edit-btn" onclick="openBudidayaModal()">
-                    📅 Mulai Budidaya
-                </button>
-
-            @else
-
-                <div class="budidaya-box">
-
-                    <div class="top">
-
-                        <div class="icon">📅</div>
-
-                        <div>
-                            <p>Umur Budidaya</p>
-                            <h2>{{ $days }} Hari</h2>
-
-                            <small>
-                                Mulai: {{ $profile->tanggal_mulai_budidaya }}
-                            </small>
-                        </div>
-
-                    </div>
-
-                    <div class="progress">
-                        <div class="bar"
-                             style="width: {{ $percent }}%">
-                        </div>
-                    </div>
-
-                    <div class="bottom">
-                        <span>{{ $days }} / 90 Hari</span>
-                        <span>Panen: {{ $estimasiPanen }}</span>
-                    </div>
-
-                </div>
-
-                <!-- ACTION -->
-                <div class="budidaya-action">
-
-                    <button class="edit-btn"
-                            onclick="openBudidayaModal()">
-
-                        ✏️ Edit Tanggal
-
-                    </button>
-
-                    <button class="edit-btn danger"
-                            onclick="resetBudidaya()">
-
-                        🔄 Reset
-
-                    </button>
-
-                </div>
-
-            @endif
-
         </div>
-
+        @if(!$profile || !$start)
+            <button class="start-btn" onclick="openBudidayaModal()">
+                <i class="fas fa-play"></i> Mulai Budidaya
+            </button>
+        @else
+            <div class="budidaya-content">
+                <div class="budidaya-info">
+                    <div class="budidaya-age">
+                        <span class="age-number">{{ $days }}</span>
+                        <span class="age-label">Hari</span>
+                    </div>
+                    <div class="budidaya-detail">
+                        <p>📊 Umur: <strong>{{ $umurMinggu }} Minggu</strong></p>
+                        <p>📅 Mulai: <strong>{{ $profile->tanggal_mulai_budidaya }}</strong></p>
+                        <p>🎯 Panen: <strong>{{ $estimasiPanen }}</strong></p>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>📈 Progress Budidaya</span>
+                        <span>{{ round($percent) }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ $percent }}%"></div>
+                    </div>
+                </div>
+                <div class="budidaya-actions">
+                    <button class="edit-small-btn" onclick="openBudidayaModal()">
+                        <i class="fas fa-pen"></i> Edit Tanggal
+                    </button>
+                    <button class="reset-small-btn" onclick="resetBudidaya()">
+                        <i class="fas fa-sync-alt"></i> Reset
+                    </button>
+                </div>
+            </div>
+        @endif
     </div>
 
 </div>
 
-<!-- ================= MODAL PROFILE ================= -->
+<!-- MODAL EDIT PROFILE -->
 <div id="editModal" class="modal">
-
     <div class="modal-content">
-
-        <h3>Edit Profil Tambak</h3>
-
-        <form action="{{ url('/profile-tambak/update') }}"
-              method="POST"
-              enctype="multipart/form-data">
-
+        <h3>✏️ Edit Profil Tambak</h3>
+        <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
-
-            <input type="text"
-                   name="nama_tambak"
-                   placeholder="Nama Tambak"
-                   value="{{ $profile->nama_tambak ?? '' }}">
-
-            <input type="text"
-                   name="lokasi"
-                   placeholder="Lokasi"
-                   value="{{ $profile->lokasi ?? '' }}">
-
-            <input type="number"
-                   step="0.01"
-                   name="luas"
-                   placeholder="Luas Tambak"
-                   value="{{ $profile->luas ?? '' }}">
-
-            <input type="text"
-                   name="tipe_tambak"
-                   placeholder="Tipe Tambak"
-                   value="{{ $profile->tipe_tambak ?? '' }}">
-
-            <input type="date"
-                   name="tanggal_dibuat"
-                   value="{{ $profile->tanggal_dibuat ?? '' }}">
-
-            <!-- ================= FOTO ================= -->
+            <input type="text" name="nama_tambak" placeholder="Nama Tambak" value="{{ $profile->nama_tambak ?? '' }}">
+            <input type="text" name="lokasi" placeholder="Lokasi" value="{{ $profile->lokasi ?? '' }}">
+            <input type="number" step="0.01" name="luas" placeholder="Luas Tambak (m²)" value="{{ $profile->luas ?? '' }}">
+            <input type="text" name="tipe_tambak" placeholder="Tipe Tambak" value="{{ $profile->tipe_tambak ?? '' }}">
+            <input type="number" name="populasi" placeholder="Populasi Udang (ekor)" value="{{ $populasi }}">
+            <input type="number" step="0.01" name="avg_weight" placeholder="Berat Rata-rata (gram/ekor)" value="{{ $avgWeight }}">
+            <input type="date" name="tanggal_dibuat" value="{{ $profile->tanggal_dibuat ?? '' }}">
             <label>Foto Tambak</label>
-
-            <input type="file"
-                   name="foto_tambak"
-                   accept="image/*">
-
-            <!-- PREVIEW -->
-            <img id="previewFoto"
-                 src="#"
-                 style="display:none;
-                        width:100%;
-                        margin-top:10px;
-                        border-radius:12px;">
-
+            <input type="file" name="foto_tambak" accept="image/*" id="fotoInput">
+            <img id="previewFoto" src="#" style="display:none; width:100%; margin-top:10px; border-radius:12px;">
             <div class="modal-action">
-
-                <button type="button"
-                        onclick="closeEditModal()">
-
-                    Batal
-
-                </button>
-
-                <button type="submit">
-                    Simpan
-                </button>
-
+                <button type="button" onclick="closeEditModal()">Batal</button>
+                <button type="submit">Simpan</button>
             </div>
-
         </form>
-
     </div>
-
 </div>
 
-<!-- ================= MODAL BIOMASSA ================= -->
-<div id="biomassaModal" class="modal">
-
-    <div class="modal-content">
-
-        <h3>Edit Biomassa</h3>
-
-        <form action="{{ url('/profile-tambak/biomassa/update') }}"
-              method="POST">
-
-            @csrf
-            @method('PUT')
-
-            <input type="number"
-                   name="biomassa_udang"
-                   value="{{ $profile->biomassa_udang ?? 0 }}">
-
-            <div class="modal-action">
-
-                <button type="button"
-                        onclick="closeBiomassa()">
-
-                    Batal
-
-                </button>
-
-                <button type="submit">
-                    Simpan
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-
-</div>
-
-<!-- ================= MODAL BUDIDAYA ================= -->
+<!-- MODAL BUDIDAYA -->
 <div id="budidayaModal" class="modal">
-
     <div class="modal-content">
-
-        <h3>Mulai / Edit Budidaya</h3>
-
-        <form action="{{ url('/budidaya/start') }}"
-              method="POST">
-
+        <h3>📅 Mulai / Edit Budidaya</h3>
+        <form action="{{ route('budidaya.start') }}" method="POST">
             @csrf
             @method('PUT')
-
             <label>Tanggal Mulai Budidaya</label>
-
-            <input type="date"
-                   name="tanggal_mulai_budidaya"
-                   value="{{ $profile->tanggal_mulai_budidaya ?? '' }}"
-                   required>
-
+            <input type="date" name="tanggal_mulai_budidaya" value="{{ $profile->tanggal_mulai_budidaya ?? '' }}" required>
             <div class="modal-action">
-
-                <button type="button"
-                        onclick="closeBudidayaModal()">
-
-                    Batal
-
-                </button>
-
-                <button type="submit">
-                    Simpan
-                </button>
-
+                <button type="button" onclick="closeBudidayaModal()">Batal</button>
+                <button type="submit">Simpan</button>
             </div>
-
         </form>
-
     </div>
-
 </div>
 
-{{-- ================= TOAST ================= --}}
-
-@if(session('success'))
-    <div class="toast success" id="toast">
-        ✅ {{ session('success') }}
-    </div>
+<!-- TOAST -->
+@if(session('success')) 
+    <div class="toast success" id="toast">✅ {{ session('success') }}</div>
+@endif
+@if(session('error')) 
+    <div class="toast error" id="toast">❌ {{ session('error') }}</div>
 @endif
 
-@if(session('error'))
-    <div class="toast error" id="toast">
-        ❌ {{ session('error') }}
-    </div>
-@endif
+<script>
+    // Auto reload setelah toast success
+    document.addEventListener('DOMContentLoaded', function() {
+        const toast = document.getElementById('toast');
+        if (toast && toast.classList.contains('success')) {
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        }
+        
+        // 🔥 Update pakan hari ini secara real-time
+        updatePakanHariIni();
+        setInterval(updatePakanHariIni, 10000);
+    });
+    
+    // 🔥 Fungsi update pakan hari ini (dalam KG)
+    function updatePakanHariIni() {
+        fetch('/api/feeding/today')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const pakanElement = document.getElementById('pakanHariIniProfile');
+                    if (pakanElement) {
+                        pakanElement.innerHTML = data.total_kg.toFixed(2) + ' <span>kg</span>';
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    
+    function openEditModal() {
+        document.getElementById('editModal').style.display = 'flex';
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    function openBudidayaModal() {
+        document.getElementById('budidayaModal').style.display = 'flex';
+    }
+    
+    function closeBudidayaModal() {
+        document.getElementById('budidayaModal').style.display = 'none';
+    }
+    
+    function kalibrasi(type) {
+        showToast('Fitur kalibrasi ' + type + ' akan segera tersedia', 'info');
+    }
+    
+    function resetBudidaya() {
+        if (confirm('⚠️ Apakah Anda yakin ingin mereset masa budidaya ke hari ini?')) {
+            fetch('/budidaya/reset', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast('Gagal reset budidaya', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Terjadi kesalahan', 'error');
+            });
+        }
+    }
+    
+    function showToast(message, type) {
+        let toast = document.getElementById('toast');
+        if (toast) toast.remove();
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<div class="toast-content">${type === 'success' ? '✅' : (type === 'error' ? '❌' : 'ℹ️')} ${message}</div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // Preview foto
+    document.getElementById('fotoInput')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById('previewFoto');
+        if (file && preview) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+<script>
+function kalibrasiPH() {
+    fetch('/api/realtime')
+        .then(res => res.json())
+        .then(data => {
+            const currentPh = data.ph;
+            if (confirm(`Kalibrasi pH dari ${currentPh} ke 7.0?`)) {
+                fetch('/api/calibrate/ph', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ desired_value: 7.0, current_value: currentPh })
+                })
+                .then(res => res.json())
+                .then(result => {
+                    alert(result.message);
+                    if (result.success) location.reload();
+                });
+            }
+        });
+}
 
-<script src="{{ asset('js/profile.js') }}"></script>
-
+function kalibrasiTurbidity() {
+    fetch('/api/realtime')
+        .then(res => res.json())
+        .then(data => {
+            const currentTurb = data.turbidity;
+            if (confirm(`Kalibrasi Turbidity dari ${currentTurb} ke 30 NTU?`)) {
+                fetch('/api/calibrate/turbidity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ desired_value: 30, current_value: currentTurb })
+                })
+                .then(res => res.json())
+                .then(result => {
+                    alert(result.message);
+                    if (result.success) location.reload();
+                });
+            }
+        });
+}
+</script>
 @endsection

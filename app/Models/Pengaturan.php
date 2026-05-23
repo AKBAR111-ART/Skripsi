@@ -1,20 +1,26 @@
 <?php
+// app/Models/Pengaturan.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PengaturanTambak extends Model
+class Pengaturan extends Model
 {
-    protected $table = 'pengaturan_tambak';
-
+    protected $table = 'pengaturan';
+    
     protected $fillable = [
-        'rule_sensor',
-        'pengingat'
+        'penjaga',
+        'nomor_wa',
+        'waktu',
+        'tanggal',
+        'template_pesan'
     ];
-
+    
     protected $casts = [
-        'rule_sensor' => 'array',
-        'pengingat' => 'array',
+        'penjaga' => 'array',
+        'nomor_wa' => 'array',
+        'waktu' => 'array',
+        'tanggal' => 'date'
     ];
 }

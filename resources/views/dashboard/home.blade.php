@@ -1,275 +1,175 @@
 @extends('footbar.utama')
 
-@section('title', 'Dashboard Tambak')
+@section('title', 'Dashboard Tambak Udang')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/home.css') }}">
 @endpush
 
 @section('content')
-
-<div class="dashboard">
-
-    <!-- TOP BAR -->
-    <div class="top-cards">
-
-        <div class="top-card green">
-            📦 Pakan Hari Ini:
-            <b id="topFeed">-</b>
+<div class="dashboard-container">
+    
+    <!-- STATS GRID - 3 CARD (PAKAN, KONDISI AIR, POPULASI) -->
+    <div class="stats-grid">
+        <!-- CARD 1: PAKAN HARI INI -->
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+                <h3 id="topFeed">{{ $pakanHariIni ?? 0 }} <span>kg</span></h3>
+                <p>Pakan Hari Ini</p>
+            </div>
         </div>
-
-        <div class="top-card green">
-            🛡️ Kondisi Air:
-            <b id="topWater">-</b>
+        
+        <!-- CARD 2: KONDISI AIR -->
+        <div class="stat-card">
+            <div class="stat-icon">💧</div>
+            <div class="stat-info">
+                <h3 id="topWater">Memuat...</h3>
+                <p>Kondisi Air</p>
+            </div>
         </div>
-
-        <div class="top-card red">
-            ⚠ Status:
-            <b id="topStatus">-</b>
+        
+        <!-- CARD 3: POPULASI -->
+        <div class="stat-card">
+            <div class="stat-icon">🦐</div>
+            <div class="stat-info">
+                <h3>{{ number_format($populasi ?? 5000) }} <span>ekor</span></h3>
+                <p>Populasi</p>
+            </div>
         </div>
-
     </div>
 
-    <!-- ========================= -->
+    <!-- ALERT BOX -->
+    <div id="alertBox" class="alert-premium normal">✅ Memuat data sensor...</div>
 
-    <!-- MAIN CARD -->
-    <div class="main-grid">
-
-        <!-- KIRI -->
-        <div class="card">
-
-            <h3>Informasi Kualitas Air (Real-time)</h3>
-
-            <div class="gauge-wrap">
-
-                <!-- PH -->
-                <div class="gauge">
-
-                    <h5>pH Air</h5>
-
-                    <canvas id="phGauge"></canvas>
-
-                    <div class="gauge-value" id="phText">0</div>
-
-                    <span class="badge green" id="phStatus">
-                        Normal
-                    </span>
-
-                </div>
-
-                <!-- TURBIDITY -->
-                <div class="gauge">
-
-                    <h5>Turbidity</h5>
-
-                    <canvas id="turbGauge"></canvas>
-
-                    <div class="gauge-value" id="turbText">
-                        0 NTU
+    <!-- CONTENT GRID - 2 CARD (GAUGE + FEED) -->
+    <div class="content-grid-two">
+        
+        <!-- GAUGE CARD -->
+        <div class="gauge-card">
+            <div class="card-header">
+                <i class="fas fa-chart-simple"></i>
+                <h3>Kualitas Air Real-time</h3>
+            </div>
+            <div class="gauge-container">
+                <div class="gauge-item">
+                    <div class="gauge-canvas">
+                        <canvas id="phGauge" width="180" height="180"></canvas>
+                        <div class="gauge-value">
+                            <span class="gauge-number" id="phText">0</span>
+                            <span class="gauge-unit">pH</span>
+                        </div>
                     </div>
-
-                    <span class="badge yellow" id="turbStatus">
-                        Sedang
-                    </span>
-
+                    <div class="gauge-label">pH Air</div>
+                    <span class="status-badge" id="phStatus">Normal</span>
                 </div>
-
+                <div class="gauge-item">
+                    <div class="gauge-canvas">
+                        <canvas id="turbGauge" width="180" height="180"></canvas>
+                        <div class="gauge-value">
+                            <span class="gauge-number" id="turbText">0</span>
+                            <span class="gauge-unit">NTU</span>
+                        </div>
+                    </div>
+                    <div class="gauge-label">Kekeruhan</div>
+                    <span class="status-badge" id="turbStatus">Normal</span>
+                </div>
             </div>
-
         </div>
 
-        <!-- TENGAH -->
-        <div class="card">
-
-            <h3>Rekomendasi Pakan</h3>
-
-            <ul class="list">
-                <li>✔ Frekuensi: <b>4x sehari</b></li>
-                <li>✔ Waktu: <b>05.00 - 22.00</b></li>
+        <!-- FEED CARD (REKOMENDASI PAKAN) - ELEGAN -->
+        <div class="feeding-card">
+            <div class="card-header">
+                <i class="fas fa-utensils"></i>
+                <h3>Rekomendasi Pakan</h3>
+            </div>
+            <ul class="info-list">
+                <li><span>Frekuensi</span><strong>3x sehari</strong></li>
+                <li><span>Waktu</span><strong>Pagi | Siang | Sore</strong></li>
+                <li><span>Berdasarkan</span><strong>Kondisi air & biomassa</strong></li>
             </ul>
-
-            <!-- BOX HASIL -->
             <div class="feed-box">
-
-                <div class="feed-label">
-                    Estimasi Pakan
-                </div>
-
-                <div class="feed-value" id="feedValue">
-                    0 Kg
-                </div>
-
-                <div class="feed-note">
-                    Berdasarkan kondisi air
-                </div>
-
+                <div class="feed-label">ESTIMASI PAKAN</div>
+                <div class="feed-value" id="feedValue">0 kg</div>
+                <div class="feed-note">per 1x pemberian</div>
             </div>
-
-            <!-- BUTTON -->
-            <div style="margin-top:15px; display:flex; gap:10px;">
-
-                <button class="btn btn-success"
-                    onclick="kirimPakan()">
-
-                    📤 Kirim
-
-                </button>
-
-                <button class="btn btn-warning"
-                    onclick="openEdit()">
-
-                    ✏ Edit
-
-                </button>
-
+            <div class="btn-group">
+                <button class="btn-primary" onclick="kirimPakan()"><i class="fas fa-paper-plane"></i> Kirim Pakan</button>
+                <button class="btn-secondary" onclick="openEdit()"><i class="fas fa-pen"></i> Manual</button>
             </div>
-
-        </div>
-
-        <!-- KANAN -->
-        <div class="card">
-
-            <h3>Status Kondisi Tambak</h3>
-
-            <div class="status-box yellow"
-                id="pondCondition">
-
-                -
-
-            </div>
-
-            <div class="status-box blue"
-                id="pondCause">
-
-                -
-
-            </div>
-
-            <p class="action" id="pondAction">
-                -
-            </p>
-
         </div>
 
     </div>
 
-    <!-- ALERT -->
-    <div class="alert-box" id="alertBox">
-        -
-    </div>
-
-    <!-- ========================= -->
-    <!-- GRAFIK -->
-    <!-- ========================= -->
-    <div class="chart-grid">
-
-        <div class="card">
-
-            <h4>Grafik pH</h4>
-
+    <!-- CHARTS GRID -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="card-header"><i class="fas fa-chart-line"></i><h3>Grafik pH (15 data terakhir)</h3></div>
             <canvas id="chartPh"></canvas>
-
         </div>
-
-        <div class="card">
-
-            <h4>Grafik Kekeruhan</h4>
-
+        <div class="chart-card">
+            <div class="card-header"><i class="fas fa-chart-line"></i><h3>Grafik Kekeruhan (15 data terakhir)</h3></div>
             <canvas id="chartTurb"></canvas>
-
         </div>
-
-        <div class="card">
-
-            <h4>Grafik Pakan Mingguan</h4>
-
+        <div class="chart-card">
+            <div class="card-header"><i class="fas fa-chart-bar"></i><h3>Grafik Pakan Mingguan</h3></div>
             <canvas id="chartFeed"></canvas>
-
         </div>
-
     </div>
 
-    <!-- ========================= -->
-    <!-- BOTTOM -->
-    <!-- ========================= -->
+    <!-- BOTTOM GRID -->
     <div class="bottom-grid">
-
-        <div class="card">
-
-            <h4>Rule yang Digunakan</h4>
-
-            <p>
-                ✔ IF pH < 6.5 AND turbidity > 50
-                → kurangi pakan
-            </p>
-
-            <p>
-                ✔ IF normal → pakan optimal
-            </p>
-
+        <div class="info-card">
+            <div class="card-header"><i class="fas fa-cog"></i><h3>Rule Engine</h3></div>
+            <div id="ruleDetail" style="font-size:13px; line-height:1.8;"></div>
         </div>
-
-        <div class="card">
-
-            <h4>Data Tambahan</h4>
-
-            <p>🦐 Umur: 6 Minggu</p>
-            <p>⚖ Berat: 7.5 gram</p>
-            <p>📦 Biomassa: 120 kg</p>
-
+        <div class="info-card">
+            <div class="card-header"><i class="fas fa-database"></i><h3>Data Tambahan</h3></div>
+            <ul class="info-list">
+                <li><span>Umur</span><strong id="umurMinggu">{{ $umur_minggu ?? 0 }} Minggu</strong></li>
+                <li><span>Berat Rata-rata</span><strong id="beratRata">{{ $berat_rata ?? 0 }} gram</strong></li>
+                <li><span>Biomassa</span><strong id="biomassa">{{ round(($biomassa ?? 0) / 1000, 2) }} kg</strong></li>
+                <li><span>Populasi</span><strong>{{ number_format($populasi ?? 5000) }} ekor</strong></li>
+            </ul>
         </div>
-
     </div>
 
 </div>
 
-
-<!-- ====================== -->
 <!-- MODAL EDIT -->
-<!-- ====================== -->
-<div id="editModal" class="edit-modal">
-
-    <div class="edit-card">
-
-        <h3>Edit Pakan Manual</h3>
-
-        <input
-            type="number"
-            id="manualPakan"
-            placeholder="Masukkan pakan (kg)"
-            style="width:100%; padding:10px; margin-top:10px;">
-
-        <div style="margin-top:15px; display:flex; gap:10px;">
-
-            <button class="btn btn-success"
-                onclick="sendEdit()">
-
-                📤 Kirim
-
-            </button>
-
-            <button class="btn btn-danger"
-                onclick="closeEdit()">
-
-                ❌ Tutup
-
-            </button>
-
+<div id="editModal" class="modal-premium">
+    <div class="modal-content-premium">
+        <i class="fas fa-pen" style="font-size: 40px; color: #667eea;"></i>
+        <h3>Kirim Pakan Manual</h3>
+        <input type="number" id="manualPakan" placeholder="Masukkan pakan (gram)" step="1" min="1">
+        <div class="btn-group">
+            <button class="btn-primary" onclick="sendEdit()">Kirim</button>
+            <button class="btn-secondary" onclick="closeEdit()">Tutup</button>
         </div>
-
     </div>
-
 </div>
-
 @endsection
 
-
 @push('scripts')
-
-<!-- CHART JS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- REALTIME HOME JS -->
 <script src="{{ asset('js/home.js') }}"></script>
-
+<script>
+    window.ruleSensor = @json($rule ?? null);
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.ruleSensor) {
+            document.getElementById('ruleDetail').innerHTML = `
+                <strong>📐 Detail Rule:</strong><br>
+                ✅ pH Baik: ${window.ruleSensor.ph_min_good} - ${window.ruleSensor.ph_max_good}<br>
+                ⚠️ pH Peringatan: ${window.ruleSensor.ph_min_warning} - ${window.ruleSensor.ph_max_warning}<br>
+                ❌ pH Bahaya: < ${window.ruleSensor.ph_danger_low} atau > ${window.ruleSensor.ph_danger_high}<br>
+                ✅ NTU Baik: ${window.ruleSensor.turbidity_min_good} - ${window.ruleSensor.turbidity_max_good}<br>
+                ⚠️ NTU Peringatan: ${window.ruleSensor.turbidity_min_warning} - ${window.ruleSensor.turbidity_max_warning}<br>
+                ❌ NTU Bahaya: < ${window.ruleSensor.turbidity_danger_low} atau > ${window.ruleSensor.turbidity_danger_high}
+            `;
+        }
+        
+        if (typeof initAllCharts === 'function') setTimeout(initAllCharts, 100);
+        if (typeof loadRealtime === 'function') { loadRealtime(); setInterval(loadRealtime, 3000); }
+    });
+</script>
 @endpush

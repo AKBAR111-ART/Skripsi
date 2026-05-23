@@ -6,32 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class PengaturanTambak extends Model
 {
-    protected $table = 'rule_sensor_air';
-
+    protected $table = 'pengaturan_tambak';
+    
     protected $fillable = [
-
-        'ph_min_good',
-        'ph_max_good',
-
-        'ph_min_warning',
-        'ph_max_warning',
-
-        'ph_danger_low',
-        'ph_danger_high',
-
-        'turbidity_min_good',
-        'turbidity_max_good',
-
-        'turbidity_min_warning',
-        'turbidity_max_warning',
-
-        'turbidity_danger_low',
-        'turbidity_danger_high',
-
-        'status'
+        'nomor_wa',
+        'whatsapp_aktif',
+        'rule_engine_aktif',
+        'penjaga',
+        'waktu',
+        'tanggal',
+        'template_pesan',
+        'populasi',
+        'berat_rata',
+        'umur_minggu',
+        'pakan_per_ekor'
     ];
-
+    
     protected $casts = [
-        'status' => 'boolean'
+        'penjaga' => 'array',
+        'nomor_wa' => 'array',
+        'waktu' => 'array',
+        'whatsapp_aktif' => 'boolean',
+        'rule_engine_aktif' => 'boolean'
     ];
 }

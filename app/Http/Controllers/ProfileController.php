@@ -5,103 +5,60 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\TambakProfile;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    // ======================
-    // HALAMAN PROFILE
-    // ======================
-    public function index5()
+    public function index()
     {
+        // 🔥 AMBIL DATA TERBARU LANGSUNG DARI DATABASE
         $profile = TambakProfile::first();
-
         return view('dashboard.profile', compact('profile'));
     }
 
-    // ======================
-    // UPDATE PROFILE + FOTO
-    // ======================
     public function update(Request $request)
     {
         $request->validate([
-            'nama_tambak'    => 'nullable|string',
-            'lokasi'         => 'nullable|string',
-            'luas'           => 'nullable|numeric',
-            'tipe_tambak'    => 'nullable|string',
+            'nama_tambak'    => 'nullable|string|max:255',
+            'lokasi'         => 'nullable|string|max:255',
+            'luas'           => 'nullable|numeric|min:0',
+            'tipe_tambak'    => 'nullable|string|max:100',
             'tanggal_dibuat' => 'nullable|date',
-
-            // FOTO
+            'populasi'       => 'nullable|integer|min:0',
+            'avg_weight'     => 'nullable|numeric|min:0',
             'foto_tambak'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // ======================
-        // AMBIL DATA PERTAMA
-        // ======================
-
         $profile = TambakProfile::first();
-
-        // kalau belum ada data
+        
         if (!$profile) {
-
             $profile = new TambakProfile();
-
         }
-
-        // ======================
-        // UPDATE DATA
-        // ======================
 
         $profile->nama_tambak = $request->nama_tambak;
         $profile->lokasi = $request->lokasi;
         $profile->luas = $request->luas;
         $profile->tipe_tambak = $request->tipe_tambak;
         $profile->tanggal_dibuat = $request->tanggal_dibuat;
-
-        // ======================
-        // UPLOAD FOTO
-        // ======================
+        $profile->populasi = $request->populasi ?? 5000;
+        $profile->avg_weight = $request->avg_weight ?? 15;
 
         if ($request->hasFile('foto_tambak')) {
-
-            $file = $request->file('foto_tambak');
-
-            // nama unik
-            $filename = time() . '.' . $file->getClientOriginalExtension();
-
-            // simpan file
-            $file->storeAs('tambak', $filename, 'public');
-
-            // hapus foto lama
-            if ($profile->foto_tambak) {
-
-                $oldPath = storage_path(
-                    'app/public/' . $profile->foto_tambak
-                );
-
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
-                }
+            if ($profile->foto_tambak && Storage::disk('public')->exists($profile->foto_tambak)) {
+                Storage::disk('public')->delete($profile->foto_tambak);
             }
-
-            // simpan path baru
-            $profile->foto_tambak = 'tambak/' . $filename;
+            $file = $request->file('foto_tambak');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('tambak', $filename, 'public');
+            $profile->foto_tambak = $path;
         }
-
-        // ======================
-        // SAVE
-        // ======================
 
         $profile->save();
 
-        return back()->with(
-            'success',
-            'Profil berhasil diperbarui'
-        );
+        // 🔥 REDIRECT DENGAN SESSION SUCCESS
+        return redirect()->route('profile.index')->with('success', '✅ Profil berhasil diperbarui');
     }
 
-    // ======================
-    // START BUDIDAYA
-    // ======================
     public function startBudidaya(Request $request)
     {
         $request->validate([
@@ -109,79 +66,46 @@ class ProfileController extends Controller
         ]);
 
         $profile = TambakProfile::first();
-
         if (!$profile) {
-
-            return back()->with(
-                'error',
-                'Profile tidak ditemukan'
-            );
+            $profile = new TambakProfile();
         }
 
-        $profile->tanggal_mulai_budidaya =
-            $request->tanggal_mulai_budidaya;
-
+        $profile->tanggal_mulai_budidaya = $request->tanggal_mulai_budidaya;
         $profile->save();
 
-        return back()->with(
-            'success',
-            'Budidaya berhasil dimulai'
-        );
+        return redirect()->route('profile.index')->with('success', '✅ Budidaya berhasil dimulai');
     }
 
-    // ======================
-    // RESET BUDIDAYA
-    // ======================
     public function resetBudidaya()
     {
         $profile = TambakProfile::first();
-
         if (!$profile) {
-
-            return response()->json([
-                'error' => true
-            ], 404);
+            return response()->json(['error' => true, 'message' => 'Profile tidak ditemukan'], 404);
         }
 
-        // reset ke hari ini
-        $profile->tanggal_mulai_budidaya =
-            Carbon::now();
-
+        $profile->tanggal_mulai_budidaya = Carbon::now();
         $profile->save();
 
         return response()->json([
             'success' => true,
-            'message' =>
-                'Budidaya berhasil direset ke hari ini'
+            'message' => '🔄 Budidaya berhasil direset ke hari ini'
         ]);
     }
 
-    // ======================
-    // UPDATE BIOMASSA
-    // ======================
     public function updateBiomassa(Request $request)
     {
         $request->validate([
-            'biomassa_udang' => 'required|numeric'
+            'biomassa_udang' => 'required|numeric|min:0'
         ]);
 
         $profile = TambakProfile::first();
-
-        // kalau belum ada data
         if (!$profile) {
-
             $profile = new TambakProfile();
-
         }
 
-        $profile->biomassa_udang =
-            $request->biomassa_udang;
-
+        $profile->biomassa_udang = $request->biomassa_udang;
         $profile->save();
 
-        return back()->with(
-            'success',
-            'Biomassa berhasil disimpan'
-        );
+        return redirect()->route('profile.index')->with('success', '✅ Biomassa berhasil diperbarui');
     }
 }
