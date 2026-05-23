@@ -17,6 +17,7 @@ use App\Http\Controllers\PengingatJadwalController;
 | WEB ROUTES (TAMBAK UDANG)
 |--------------------------------------------------------------------------
 */
+Route::get('/api/profile/latest', [ProfileController::class, 'getLatestProfile']);
 Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
 // Route untuk history
 Route::get('/history/week-data/{week}', [HistoryController::class, 'getWeekData']);
