@@ -30,7 +30,10 @@
     26 => 'Carbon\\Laravel\\ServiceProvider',
     27 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     28 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    29 => 'App\\Providers\\AppServiceProvider',
+    29 => 'RakibDevs\\Weather\\WeatherServiceProvider',
+    30 => 'Rawaby88\\OpenWeatherMap\\Providers\\OpenWeatherServiceProvider',
+    31 => 'SolgenPower\\LaravelOpenWeather\\OpenWeatherServiceProvider',
+    32 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -48,7 +51,10 @@
     11 => 'Carbon\\Laravel\\ServiceProvider',
     12 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     13 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    14 => 'App\\Providers\\AppServiceProvider',
+    14 => 'RakibDevs\\Weather\\WeatherServiceProvider',
+    15 => 'Rawaby88\\OpenWeatherMap\\Providers\\OpenWeatherServiceProvider',
+    16 => 'SolgenPower\\LaravelOpenWeather\\OpenWeatherServiceProvider',
+    17 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (

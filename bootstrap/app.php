@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withMiddleware(function (Middleware $middleware) {
+    $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
+})
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
+})
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })
@@ -21,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         
         // PENGINGAT JADWAL WA (SETIAP MENIT)
-        $schedule->command('pengingat:jadwal')->everyMinute();
+        // $schedule->command('pengingat:jadwal')->everyMinute();
         
         // FEEDING & PAKAN
         $schedule->command('feeding:schedule')->everyMinute();

@@ -119,3 +119,477 @@
     padding: 4px 10px;
     border-radius: 20px;
 }
+/* Jadwal Container */
+.jadwal-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 8px;
+    background: #fafcff;
+}
+
+.jadwal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border: 1px solid #eef2f6;
+}
+
+.jadwal-item:hover {
+    background: #f8fafc;
+}
+
+.jadwal-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.jadwal-time {
+    font-weight: 600;
+    color: #667eea;
+    background: #eef2ff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+.jadwal-message {
+    color: #334155;
+    font-size: 13px;
+}
+
+.jadwal-status {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+.jadwal-status.sent {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.jadwal-status.pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.jadwal-delete {
+    background: #fee2e2;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    color: #dc2626;
+    font-size: 12px;
+}
+
+.jadwal-delete:hover {
+    background: #fecaca;
+}
+
+.jadwal-empty {
+    text-align: center;
+    padding: 30px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+/* ==================== FORM GRID 2 KOLOM ==================== */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* ==================== INPUT LIST CONTAINER ==================== */
+.input-list-container {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 8px;
+    min-height: 60px;
+    margin-bottom: 10px;
+}
+
+.input-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.input-item:last-child {
+    margin-bottom: 0;
+}
+
+.input-item .input-value {
+    font-size: 13px;
+    color: #1e293b;
+}
+
+.input-item .input-remove {
+    background: #fee2e2;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #dc2626;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.input-item .input-remove:hover {
+    background: #fecaca;
+    transform: scale(1.05);
+}
+
+/* ==================== JADWAL SECTION ==================== */
+.jadwal-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eef2ff;
+}
+
+.jadwal-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 8px;
+    background: #fafcff;
+}
+
+.jadwal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border: 1px solid #eef2f6;
+    transition: all 0.3s ease;
+}
+
+.jadwal-item:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.jadwal-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.jadwal-time {
+    font-weight: 600;
+    color: #667eea;
+    background: #eef2ff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+.jadwal-message {
+    color: #334155;
+    font-size: 13px;
+}
+
+.jadwal-status {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+.jadwal-status.sent {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.jadwal-status.pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.jadwal-delete {
+    background: #fee2e2;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    color: #dc2626;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.jadwal-delete:hover {
+    background: #fecaca;
+}
+
+.jadwal-empty {
+    text-align: center;
+    padding: 30px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.jadwal-add-form {
+    margin-top: 15px;
+}
+
+.jadwal-input-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.jadwal-input-group .form-control-premium {
+    flex: 1;
+    min-width: 120px;
+}
+
+/* ==================== PREVIEW CARD ==================== */
+.preview-card {
+    background: linear-gradient(135deg, #667eea08, #764ba208);
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid #eef2ff;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef2ff;
+    font-weight: 600;
+    color: #667eea;
+}
+
+.preview-content {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.preview-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.preview-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.preview-value {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+/* ==================== REKOMENDASI CARD ==================== */
+.recommendation-card {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: white;
+}
+
+.recommendation-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.recommendation-content {
+    flex: 1;
+}
+
+.recommendation-label {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.recommendation-value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.recommendation-value .value-number {
+    font-size: 36px;
+    font-weight: 800;
+}
+
+.recommendation-value .value-unit {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.recommendation-status {
+    font-size: 11px;
+    margin-top: 8px;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.recommendation-status i {
+    font-size: 8px;
+}
+
+/* ==================== SENSOR STATUS CARD ==================== */
+.sensor-status-card {
+    background: #f8fafc;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #eef2f6;
+}
+
+.sensor-status-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #eef2f6;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.live-badge {
+    margin-left: auto;
+    background: #dc2626;
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    animation: pulse 1.5s infinite;
+}
+
+.sensor-status-content {
+    padding: 16px;
+}
+
+.sensor-status-loading {
+    text-align: center;
+    color: #94a3b8;
+    padding: 20px;
+}
+
+/* ==================== FORM HELP ==================== */
+.form-help {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+.form-help code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 900px) {
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .jadwal-input-group {
+        flex-direction: column;
+    }
+    
+    .jadwal-input-group .form-control-premium {
+        width: 100%;
+    }
+    
+    .preview-content {
+        grid-template-columns: 1fr;
+    }
+}
+/* Sensor Status */
+.sensor-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.sensor-item:last-child {
+    border-bottom: none;
+}
+
+.sensor-label {
+    font-weight: 500;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.sensor-value {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13px;
+}
+
+.status-bahaya {
+    color: #dc2626;
+    background: #fee2e2;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.status-peringatan {
+    color: #f59e0b;
+    background: #fef3c7;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.status-normal {
+    color: #10b981;
+    background: #d1fae5;
+    padding: 2px 8px;
+    border-radius: 20px;
+}

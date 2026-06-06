@@ -1,10 +1,74 @@
-// ==================== HOME.JS - FINAL (ENDPOINT DIPERBAIKI) ====================
+// ==================== HOME.JS - FINAL DENGAN CUACA ====================
 let charts = {};
 
 // ==================== PH SMOOTHING VARIABLES ====================
 let lastStablePH = 7.0;
 let phValueHistory = [];
 let smoothPH = 7.0;
+
+// ==================== FUNGSI CUACA & PRODUCTION (TAMBAHAN BARU) ====================
+async function loadCuaca() {
+    try {
+        const response = await fetch('/api/production-variables');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // Update card cuaca
+            const cuacaText = document.getElementById('cuacaText');
+            const suhuText = document.getElementById('suhuText');
+            const hujanText = document.getElementById('hujanText');
+            const cuacaFeedInfo = document.getElementById('cuacaFeedInfo');
+            
+            if (cuacaText) cuacaText.innerHTML = data.cuaca || 'Cerah';
+            if (suhuText) suhuText.innerHTML = `Suhu: ${data.suhu_lingkungan || '--'}°C`;
+            if (hujanText) hujanText.innerHTML = `${data.intensitas_hujan || 0} <span>mm</span>`;
+            if (cuacaFeedInfo) {
+                let cuacaIcon = data.cuaca === 'Hujan' ? '☔' : (data.cuaca === 'Berawan' ? '☁️' : '☀️');
+                cuacaFeedInfo.innerHTML = `${cuacaIcon} ${data.cuaca} | ${data.suhu_lingkungan || '--'}°C`;
+            }
+            
+            console.log("✅ Data cuaca diupdate:", data.cuaca, data.suhu_lingkungan);
+        }
+    } catch (error) {
+        console.error("❌ Error loading cuaca:", error);
+    }
+}
+
+async function loadProductionData() {
+    try {
+        const response = await fetch('/api/production-variables');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // Update data tambahan
+            const umurText = document.getElementById('umurText');
+            const umurMinggu = document.getElementById('umurMinggu');
+            const beratRata = document.getElementById('beratRata');
+            const biomassa = document.getElementById('biomassa');
+            const targetPanen = document.getElementById('targetPanen');
+            const targetSize = document.getElementById('targetSize');
+            const topFeed = document.getElementById('topFeed');
+            
+            if (umurText) umurText.innerHTML = `${data.umur_minggu || 0} <span>Minggu</span>`;
+            if (umurMinggu) umurMinggu.innerHTML = `${data.umur_minggu || 0} Minggu`;
+            if (beratRata) beratRata.innerHTML = `${data.avg_weight || 0} gram`;
+            if (biomassa) biomassa.innerHTML = `${data.biomassa_kg || 0} kg`;
+            if (targetPanen) targetPanen.innerHTML = `${data.target_panen_kg || 0} kg`;
+            if (targetSize) targetSize.innerHTML = `${data.target_size_gram || 0} gram`;
+            if (topFeed && data.total_pakan_harian_kg !== undefined) {
+                topFeed.innerHTML = `${data.total_pakan_harian_kg} <span>kg</span>`;
+            }
+            
+            console.log("✅ Data produksi diupdate:", data);
+        }
+    } catch (error) {
+        console.error("❌ Error loading production data:", error);
+    }
+}
 
 // Init All Charts
 function initAllCharts() {
@@ -167,83 +231,37 @@ function createBarChart(id, color, label) {
                 label: label,
                 data: [0, 0, 0, 0, 0, 0, 0],
                 backgroundColor: color,
-                borderRadius: 12,
-                borderSkipped: false,
-                barPercentage: 0.65,
-                categoryPercentage: 0.8,
-                shadowOffsetX: 2,
-                shadowOffsetY: 2,
-                shadowBlur: 4,
-                shadowColor: color + '40'
+                borderRadius: 12
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        font: { size: 11, family: "'Inter', sans-serif", weight: '500' },
-                        color: '#4a5568',
-                        usePointStyle: true,
-                        boxWidth: 8,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#e2e8f0',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderWidth: 1,
-                    cornerRadius: 12,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.raw.toLocaleString()} gram`;
-                        }
-                    }
-                }
-            },
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        font: { size: 10, family: "'Inter', sans-serif" },
-                        color: '#6b7280',
-                        callback: function(value) {
-                            return value.toLocaleString();
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Gram',
-                        font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
-                        color: '#6b7280'
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: { size: 11, family: "'Inter', sans-serif", weight: '500' },
-                        color: '#4a5568'
-                    }
-                }
-            },
-            layout: {
-                padding: {
-                    top: 10,
-                    bottom: 5
+                    title: { display: true, text: 'Gram' }
                 }
             }
         }
     });
+}
+
+// Load Weekly Feed Chart
+async function loadWeeklyFeedChart() {
+    try {
+        const response = await fetch('/api/sensor/weekly-feed');
+        const result = await response.json();
+        
+        console.log("Weekly feed data:", result);
+        
+        if (result.success && charts['chartFeed']) {
+            charts['chartFeed'].data.datasets[0].data = result.data;
+            charts['chartFeed'].update();
+        }
+    } catch (error) {
+        console.error("Error loading weekly feed chart:", error);
+    }
 }
 
 // Update Line Chart
@@ -369,6 +387,7 @@ function updatePH(ph, status) {
         updateGauge('phGauge', smoothValue, 14);
     }
 }
+
 // ==================== UPDATE TURBIDITY ====================
 function updateTurbidity(turbidity, status) {
     const turbText = document.getElementById('turbText');
@@ -497,29 +516,75 @@ async function updateStatusKondisiTambak() {
 }
 
 // ==================== LOAD ESTIMASI PAKAN ====================
+// ==================== LOAD ESTIMASI PAKAN (DIPERBAIKI) ====================
 async function loadEstimasiPakan() {
-    console.log("Loading estimasi pakan...");
+    console.log("🔄 Loading estimasi pakan...");
     
     try {
         const response = await fetch('/api/sensor/getFeedingRecommendation');
         const data = await response.json();
         
-        console.log("Response API:", data);
+        console.log("Response API Estimasi Pakan:", data);
+        
+        const feedValue = document.getElementById('feedValue');
+        const feedBox = document.querySelector('.feed-box');
         
         if (data.success && data.data) {
-            const feedValue = document.getElementById('feedValue');
+            // Ambil nilai rekomendasi (prioritaskan rekomendasi_kg)
+            let rekomendasi = data.data.rekomendasi_kg || data.data.pakan_rekomendasi_kg || 0;
+            let pakanDasar = data.data.pakan_dasar_kg || 0;
+            let faktorAir = data.data.faktor_air || 1;
+            let faktorCuaca = data.data.faktor_cuaca || 1;
+            let statusAir = data.data.status_air || 'aman';
+            let statusCuaca = data.data.status_cuaca || 'cerah';
+            let keterangan = data.data.keterangan || '';
+            
             if (feedValue) {
-                feedValue.innerHTML = data.data.pakan_rekomendasi_kg + ' kg';
+                feedValue.innerHTML = rekomendasi + ' kg';
             }
+            
+            // Update warna sesuai status
+            if (feedValue) {
+                if (statusAir === 'bahaya') {
+                    feedValue.style.color = '#dc2626';
+                    feedValue.style.fontSize = '36px';
+                } else if (statusAir === 'peringatan' || statusCuaca.includes('hujan')) {
+                    feedValue.style.color = '#f59e0b';
+                } else {
+                    feedValue.style.color = '#10b981';
+                }
+            }
+            
+            // Update tooltip / detail di feed box
+            if (feedBox && !document.getElementById('feedDetail')) {
+                const detailDiv = document.createElement('div');
+                detailDiv.id = 'feedDetail';
+                detailDiv.style.cssText = 'font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 8px;';
+                feedBox.appendChild(detailDiv);
+            }
+            
+            const detailDiv = document.getElementById('feedDetail');
+            if (detailDiv) {
+                let detailText = `📊 Dasar: ${pakanDasar} kg | Air: ${Math.round(faktorAir*100)}% | Cuaca: ${Math.round(faktorCuaca*100)}%`;
+                detailDiv.innerHTML = detailText;
+            }
+            
+            // Update alert reason jika ada
+            const alertReason = document.getElementById('alertReason');
+            if (alertReason && keterangan) {
+                alertReason.innerHTML = keterangan;
+            }
+            
+            console.log("✅ Estimasi pakan diupdate:", rekomendasi, "kg");
+            
         } else {
+            if (feedValue) feedValue.innerHTML = '0.5 kg';
             console.log("Data tidak lengkap:", data);
-            const feedValue = document.getElementById('feedValue');
-            if (feedValue) feedValue.innerHTML = '0 kg';
         }
     } catch (error) {
         console.error("Error loading estimasi:", error);
         const feedValue = document.getElementById('feedValue');
-        if (feedValue) feedValue.innerHTML = '0 kg';
+        if (feedValue) feedValue.innerHTML = '0.5 kg';
     }
 }
 
@@ -734,16 +799,25 @@ function showToast(message, type) {
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(() => { initAllCharts(); loadRealtime(); }, 100);
+    setTimeout(() => { 
+        initAllCharts(); 
+        loadRealtime(); 
+        loadCuaca();
+        loadProductionData();
+    }, 100);
     
     loadEstimasiPakan();
+    loadWeeklyFeedChart(); 
     updateAkumulasiPakanHariIni();
     loadFeedingHistory();
     loadLatestProfileData();
     updateStatusKondisiTambak();
     
     setInterval(loadRealtime, 3000);
+    setInterval(loadCuaca, 30000);
+    setInterval(loadProductionData, 30000);
     setInterval(loadEstimasiPakan, 10000);
+    setInterval(loadWeeklyFeedChart, 60000);
     setInterval(updateAkumulasiPakanHariIni, 10000);
     setInterval(loadFeedingHistory, 30000);
     setInterval(loadLatestProfileData, 30000);

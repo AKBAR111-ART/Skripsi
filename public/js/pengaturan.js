@@ -1,4 +1,4 @@
-// ==================== PENGATURAN.JS - FINAL ====================
+// ==================== PENGATURAN.JS - FINAL (DIPERBAIKI & DIRAPI) ====================
 
 let editModal = null;
 let penjagaContainer = null;
@@ -67,6 +67,13 @@ function updatePreview() {
     if (document.getElementById("waNow")) document.getElementById("waNow").innerText = wa.join(", ") || "-";
     if (document.getElementById("waktuNow")) document.getElementById("waktuNow").innerText = waktu.join(", ") || "-";
     if (tanggalInput && document.getElementById("tanggalNow")) document.getElementById("tanggalNow").innerText = tanggalInput.value || "-";
+    
+    // Update total jadwal di preview
+    const totalJadwalSpan = document.getElementById('totalJadwalNow');
+    if (totalJadwalSpan) {
+        const jadwalItems = document.querySelectorAll('.jadwal-item');
+        totalJadwalSpan.innerHTML = jadwalItems.length;
+    }
 }
 
 // ==================== CREATE INPUT ====================
@@ -90,7 +97,7 @@ function createInput(type) {
     btn.style.padding = "0 15px";
     btn.style.borderRadius = "10px";
     btn.style.cursor = "pointer";
-    btn.onclick = () => { wrapper.remove(); updatePreview(); };
+    btn.onclick = () => { wrapper.remove(); updatePreview(); checkEmptyData(); };
     wrapper.appendChild(input);
     wrapper.appendChild(btn);
     return wrapper;
@@ -107,10 +114,16 @@ function initAddButtons() {
 function loadExistingData() {
     if (!window.pengaturanData) return;
     let penjaga = [], wa = [], waktu = [];
-    try { penjaga = JSON.parse(window.pengaturanData.penjaga || "[]"); wa = JSON.parse(window.pengaturanData.nomor_wa || "[]"); waktu = JSON.parse(window.pengaturanData.waktu || "[]"); } catch(e) { console.error("Error parsing JSON:", e); }
+    try { 
+        penjaga = JSON.parse(window.pengaturanData.penjaga || "[]"); 
+        wa = JSON.parse(window.pengaturanData.nomor_wa || "[]"); 
+        waktu = JSON.parse(window.pengaturanData.waktu || "[]"); 
+    } catch(e) { console.error("Error parsing JSON:", e); }
+    
     penjaga.forEach(v => { const el = createInput("penjaga"); el.querySelector("input").value = v; if (penjagaContainer) penjagaContainer.appendChild(el); });
     wa.forEach(v => { const el = createInput("wa"); el.querySelector("input").value = v; if (waContainer) waContainer.appendChild(el); });
     waktu.forEach(v => { const el = createInput("waktu"); el.querySelector("input").value = v; if (waktuContainer) waktuContainer.appendChild(el); });
+    
     if (window.pengaturanData.tanggal && tanggalInput) tanggalInput.value = window.pengaturanData.tanggal;
     if (templatePesan) templatePesan.value = window.pengaturanData.template_pesan || "";
     updatePreview();
@@ -140,16 +153,23 @@ function initSaveRule() {
                 turbidity_danger_low: parseFloat(document.getElementById("tur_danger_low")?.value),
                 turbidity_danger_high: parseFloat(document.getElementById("tur_danger_high")?.value)
             };
-            const res = await fetch("/pengaturan/rule", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(payload) });
+            const res = await fetch("/pengaturan/rule", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content }, 
+                body: JSON.stringify(payload) 
+            });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || "Gagal", "error"); return; }
             showToast("Rule berhasil disimpan", "success");
+            
+            // Update display
             if (document.getElementById("ph_baik_text")) document.getElementById("ph_baik_text").innerText = `${payload.ph_min_good} - ${payload.ph_max_good}`;
             if (document.getElementById("ph_warn_text")) document.getElementById("ph_warn_text").innerHTML = `${payload.ph_min_warning} - ${payload.ph_max_warning}<br><small>atau ${payload.ph_min_warning_high} - ${payload.ph_max_warning_high}</small>`;
             if (document.getElementById("ph_bahaya_text")) document.getElementById("ph_bahaya_text").innerHTML = `< ${payload.ph_danger_low} atau > ${payload.ph_danger_high}`;
             if (document.getElementById("tur_baik_text")) document.getElementById("tur_baik_text").innerText = `${payload.turbidity_min_good} - ${payload.turbidity_max_good}`;
             if (document.getElementById("tur_warn_text")) document.getElementById("tur_warn_text").innerText = `${payload.turbidity_min_warning} - ${payload.turbidity_max_warning}`;
             if (document.getElementById("tur_bahaya_text")) document.getElementById("tur_bahaya_text").innerHTML = `< ${payload.turbidity_danger_low} atau > ${payload.turbidity_danger_high}`;
+            
             window.rule_sensor = payload;
             window.closeEdit();
             setTimeout(() => location.reload(), 1000);
@@ -196,7 +216,11 @@ function initSavePengaturan() {
         const waktu = [...document.querySelectorAll(".waktuInput")].map(e => e.value).filter(Boolean);
         const tanggal = tanggalInput?.value || null;
         try {
-            const res = await fetch("/pengaturan/store", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ rule_sensor: window.rule_sensor, pengingat: { penjaga, wa: wa, waktu, tanggal, template_pesan: templatePesan?.value || "" } }) });
+            const res = await fetch("/pengaturan/store", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content }, 
+                body: JSON.stringify({ rule_sensor: window.rule_sensor, pengingat: { penjaga, wa: wa, waktu, tanggal, template_pesan: templatePesan?.value || "" } }) 
+            });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || "Gagal", "error"); return; }
             showToast("Berhasil disimpan", "success");
@@ -217,10 +241,8 @@ function initResetForm() {
 }
 
 // ==================== JADWAL PENGINGAT ====================
-// ==================== JADWAL PENGINGAT ====================
 async function loadJadwalList() {
     try {
-        // 🔥 GANTI URL: /api/pengingat/jadwal → /api/jadwal-list
         const response = await fetch('/api/jadwal-list');
         const data = await response.json();
         const container = document.getElementById('jadwalContainer');
@@ -231,18 +253,18 @@ async function loadJadwalList() {
                 <div class="jadwal-item" data-id="${jadwal.id}">
                     <div class="jadwal-info">
                         <span class="jadwal-time">⏰ ${jadwal.jam}</span>
-                        <span class="jadwal-message">💬 ${jadwal.pesan}</span>
-                        ${jadwal.target_nomor ? `<span class="jadwal-target">📱 ${jadwal.target_nomor}</span>` : ''}
+                        <span class="jadwal-message">💬 ${escapeHtml(jadwal.pesan)}</span>
                         <span class="jadwal-status ${jadwal.is_sent ? 'sent' : 'pending'}">
                             ${jadwal.is_sent ? '✅ Terkirim' : '⏳ Pending'}
                         </span>
                     </div>
-                    <button class="jadwal-delete" onclick="deleteJadwal(${jadwal.id})">🗑</button>
+                    <button class="jadwal-delete" onclick="deleteJadwal(${jadwal.id})">🗑 Hapus</button>
                 </div>
             `).join('');
         } else {
-            container.innerHTML = '<div class="jadwal-empty">Belum ada jadwal. Tambahkan di atas.</div>';
+            container.innerHTML = '<div class="jadwal-empty">📭 Belum ada jadwal pengingat. Tambahkan di atas.</div>';
         }
+        updatePreview();
     } catch (error) {
         console.error('Error loading jadwal:', error);
     }
@@ -259,18 +281,13 @@ async function addJadwal() {
     let nomorArray = targetNomor ? targetNomor.split(',').map(n => n.trim()).filter(n => n) : [];
     
     try {
-        // 🔥 GANTI URL: /api/pengingat/jadwal → /api/jadwal-store
         const response = await fetch('/api/jadwal-store', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
             },
-            body: JSON.stringify({ 
-                jam: jam, 
-                pesan: pesan, 
-                target_nomor: nomorArray 
-            })
+            body: JSON.stringify({ jam: jam, pesan: pesan, target_nomor: nomorArray })
         });
         
         const result = await response.json();
@@ -282,7 +299,7 @@ async function addJadwal() {
             document.getElementById('newTargetNomor').value = '';
             loadJadwalList();
         } else {
-            showToast(result.message || 'Gagal menambah jadwal', 'error');
+            showToast(result.message || 'Gagal', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -293,12 +310,9 @@ async function addJadwal() {
 async function deleteJadwal(id) {
     if (!confirm('Hapus jadwal ini?')) return;
     try {
-        // 🔥 GANTI URL: /api/pengingat/jadwal → /api/jadwal-delete/
         const response = await fetch(`/api/jadwal-delete/${id}`, {
             method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }
         });
         
         const result = await response.json();
@@ -306,7 +320,7 @@ async function deleteJadwal(id) {
             showToast('✅ Jadwal dihapus', 'success');
             loadJadwalList();
         } else {
-            showToast(result.message || 'Gagal hapus jadwal', 'error');
+            showToast(result.message || 'Gagal', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -314,70 +328,172 @@ async function deleteJadwal(id) {
     }
 }
 
+// ==================== MONITORING TAMBAK ====================
+async function loadRealtimeSensor() {
+    try {
+        const response = await fetch('/api/pengaturan/realtime-sensor');
+        const data = await response.json();
+        
+        if (data.success) {
+            const statusBox = document.getElementById('statusBox');
+            if (statusBox) {
+                statusBox.innerHTML = `
+                    <div class="sensor-item">
+                        <span class="sensor-label">📊 Status Air:</span>
+                        <span class="sensor-value">${data.ph_status || 'Normal'}</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">🧪 pH:</span>
+                        <span class="sensor-value">${data.ph || '--'} (${data.ph_status || 'Normal'})</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">💧 Kekeruhan:</span>
+                        <span class="sensor-value">${data.turbidity || '--'} NTU (${data.turbidity_status || 'Normal'})</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">🕐 Last update:</span>
+                        <span class="sensor-value">${data.last_update || '-'}</span>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading sensor:', error);
+        const statusBox = document.getElementById('statusBox');
+        if (statusBox) {
+            statusBox.innerHTML = '<div class="sensor-status-loading">❌ Gagal memuat data sensor</div>';
+        }
+    }
+}
+
+// ==================== FEEDING RECOMMENDATION ====================
+function fetchFeedingRecommendation() {
+    console.log("🔄 Fetching feeding recommendation...");
+    
+    fetch('/api/feeding/recommendation')
+        .then(response => response.json())
+        .then(data => {
+            console.log("📦 Response feeding:", data);
+            
+            const beratHighlight = document.getElementById('beratHighlight');
+            if (beratHighlight && data.success && data.data) {
+                let rekomendasi = data.data.pakan_rekomendasi_kg || 0;
+                beratHighlight.innerHTML = `<span class="value-number">${rekomendasi}</span><span class="value-unit">kg</span>`;
+                
+                const status = data.data.status_keseluruhan;
+                const numberSpan = beratHighlight.querySelector('.value-number');
+                if (numberSpan) {
+                    if (status === 'bahaya') {
+                        numberSpan.style.color = '#dc2626';
+                    } else if (status === 'peringatan') {
+                        numberSpan.style.color = '#f59e0b';
+                    } else {
+                        numberSpan.style.color = 'white';
+                    }
+                }
+                
+                // Update recommendation status text
+                const recommendationStatus = document.getElementById('recommendationStatus');
+                if (recommendationStatus) {
+                    recommendationStatus.innerHTML = data.data.keterangan || '✅ Kualitas air optimal';
+                    if (status === 'bahaya') {
+                        recommendationStatus.style.color = '#dc2626';
+                    } else if (status === 'peringatan') {
+                        recommendationStatus.style.color = '#f59e0b';
+                    } else {
+                        recommendationStatus.style.color = '#10b981';
+                    }
+                }
+            } else {
+                console.error("❌ Invalid response structure:", data);
+                const beratHighlight = document.getElementById('beratHighlight');
+                if (beratHighlight) {
+                    beratHighlight.innerHTML = `<span class="value-number">0.5</span><span class="value-unit">kg</span>`;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error fetching feeding recommendation:', error);
+            const beratHighlight = document.getElementById('beratHighlight');
+            if (beratHighlight) {
+                beratHighlight.innerHTML = `<span class="value-number">0.5</span><span class="value-unit">kg</span>`;
+            }
+        });
+}
+
 // ==================== CEK DATA KOSONG ====================
 function checkEmptyData() {
     const alertDiv = document.getElementById('dataAlert');
     const alertList = document.getElementById('alertList');
     if (!alertList) return;
+    
     let missingData = [];
     const penjagaInputs = document.querySelectorAll(".penjagaInput");
     let penjagaFilled = false;
     penjagaInputs.forEach(input => { if (input.value.trim() !== '') penjagaFilled = true; });
     if (!penjagaFilled && penjagaInputs.length === 0) missingData.push('👨‍🌾 Nama penjaga belum diisi');
+    
     const waInputs = document.querySelectorAll(".waInput");
     let waFilled = false;
     waInputs.forEach(input => { if (input.value.trim() !== '') waFilled = true; });
     if (!waFilled && waInputs.length === 0) missingData.push('📱 Nomor WhatsApp belum diisi');
+    
     const waktuInputs = document.querySelectorAll(".waktuInput");
     let waktuFilled = false;
     waktuInputs.forEach(input => { if (input.value.trim() !== '') waktuFilled = true; });
     if (!waktuFilled && waktuInputs.length === 0) missingData.push('⏰ Waktu pakan belum diisi');
+    
     const tanggal = document.getElementById('tanggalInput')?.value;
     if (!tanggal) missingData.push('📅 Tanggal belum diisi');
+    
     const template = document.getElementById('templatePesan')?.value;
     if (!template || template.trim() === '') missingData.push('💬 Template pesan WhatsApp belum diisi');
+    
     const jadwalItems = document.querySelectorAll('.jadwal-item');
     if (jadwalItems.length === 0) missingData.push('⏰ Belum ada jadwal pengingat WhatsApp (isi di bawah)');
+    
     if (missingData.length > 0) {
         alertList.innerHTML = missingData.map(item => `<li>${item}</li>`).join('');
         alertDiv.style.display = 'block';
-    } else { alertDiv.style.display = 'none'; }
+    } else { 
+        alertDiv.style.display = 'none'; 
+    }
 }
 
 function closeDataAlert() {
     const alertDiv = document.getElementById('dataAlert');
-    if (alertDiv) { alertDiv.style.opacity = '0'; setTimeout(() => { alertDiv.style.display = 'none'; alertDiv.style.opacity = '1'; }, 300); }
+    if (alertDiv) { 
+        alertDiv.style.opacity = '0'; 
+        setTimeout(() => { alertDiv.style.display = 'none'; alertDiv.style.opacity = '1'; }, 300); 
+    }
 }
 
-// ==================== REALTIME SENSOR ====================
-async function loadRealtimeSensor() {
-    try {
-        const res = await fetch("/api/realtime");
-        const data = await res.json();
-        const statusBox = document.getElementById("statusBox");
-        if (statusBox && data) { statusBox.innerHTML = `<strong>Status Air:</strong> <span class="status-${data.ph_status}">${data.ph_status ? data.ph_status.toUpperCase() : 'NORMAL'}</span><br><strong>pH:</strong> ${data.ph} (${data.ph_status || 'baik'})<br><strong>Turbidity:</strong> ${data.turbidity} (${data.turbidity_status || 'baik'})<br><small>Last update: ${data.last_update || 'now'}</small>`; }
-    } catch (err) { console.error(err); }
-}
-
-function fetchFeedingRecommendation() {
-    fetch('/api/feeding/recommendation').then(response => response.json()).then(data => {
-        if (data.success) { const beratHighlight = document.getElementById('beratHighlight'); if (beratHighlight) { beratHighlight.innerText = data.data.pakan_rekomendasi_kg + ' kg'; const status = data.data.status_keseluruhan; beratHighlight.style.color = status === 'bahaya' ? '#dc2626' : (status === 'peringatan' ? '#f59e0b' : '#10b981'); } }
-    }).catch(error => console.error('Error:', error));
+// ==================== ESCAPE HTML ====================
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ==================== AUTO UPDATE ====================
 document.addEventListener("input", function(e) {
-    if (e.target.id === "ph_danger_low" || e.target.id === "ph_danger_high" || e.target.id === "tur_danger_low" || e.target.id === "tur_danger_high") updateBahayaDisplay();
+    if (e.target.id === "ph_danger_low" || e.target.id === "ph_danger_high" || e.target.id === "tur_danger_low" || e.target.id === "tur_danger_high") {
+        updateBahayaDisplay();
+    }
 });
 
+// ==================== DOM CONTENT LOADED ====================
 document.addEventListener('DOMContentLoaded', () => {
     console.log("JS PENGATURAN READY");
+    
+    // Initialize DOM elements
     editModal = document.getElementById("editModal");
     penjagaContainer = document.getElementById("penjagaContainer");
     waContainer = document.getElementById("waContainer");
     waktuContainer = document.getElementById("waktuContainer");
     tanggalInput = document.getElementById("tanggalInput");
     templatePesan = document.getElementById("templatePesan");
+    
+    // Initialize all functions
     initAddButtons();
     loadExistingData();
     initModalRule();
@@ -387,13 +503,48 @@ document.addEventListener('DOMContentLoaded', () => {
     loadJadwalList();
     loadRealtimeSensor();
     fetchFeedingRecommendation();
+    
+    // Set intervals for auto refresh
     setInterval(loadRealtimeSensor, 5000);
     setInterval(fetchFeedingRecommendation, 10000);
+    setInterval(loadJadwalList, 30000);
+    
+    // Initial check
     setTimeout(checkEmptyData, 500);
+    
+    // Event listeners for data validation
     document.addEventListener('input', function(e) {
-        if (e.target.classList && (e.target.classList.contains('penjagaInput') || e.target.classList.contains('waInput') || e.target.classList.contains('waktuInput') || e.target.id === 'tanggalInput' || e.target.id === 'templatePesan')) checkEmptyData();
+        if (e.target.classList && (e.target.classList.contains('penjagaInput') || 
+            e.target.classList.contains('waInput') || 
+            e.target.classList.contains('waktuInput') || 
+            e.target.id === 'tanggalInput' || 
+            e.target.id === 'templatePesan')) {
+            checkEmptyData();
+        }
     });
-    ['addPenjaga', 'addWa', 'addWaktu', 'addJadwal'].forEach(btnId => { const btn = document.getElementById(btnId); if (btn) btn.addEventListener('click', () => setTimeout(checkEmptyData, 500)); });
+    
+    // Add button listeners for data validation
+    ['addPenjaga', 'addWa', 'addWaktu', 'addJadwal'].forEach(btnId => { 
+        const btn = document.getElementById(btnId); 
+        if (btn) btn.addEventListener('click', () => setTimeout(checkEmptyData, 500)); 
+    });
+    
+    // Add jadwal button listener
+    const addJadwalBtn = document.getElementById('addJadwal');
+    if (addJadwalBtn) {
+        addJadwalBtn.addEventListener('click', addJadwal);
+    }
+    
+    // Preview tanggal
+    if (tanggalInput) {
+        tanggalInput.addEventListener('change', updatePreview);
+        updatePreview();
+    }
 });
 
-document.getElementById('addJadwal')?.addEventListener('click', addJadwal);
+// Export functions to global scope
+window.addJadwal = addJadwal;
+window.deleteJadwal = deleteJadwal;
+window.closeDataAlert = closeDataAlert;
+window.updatePreview = updatePreview;
+window.fetchFeedingRecommendation = fetchFeedingRecommendation;

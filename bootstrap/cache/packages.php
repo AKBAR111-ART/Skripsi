@@ -41,4 +41,29 @@
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
     ),
   ),
+  'rakibdevs/openweather-laravel-api' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'RakibDevs\\Weather\\WeatherServiceProvider',
+    ),
+  ),
+  'rawaby88/open-weather-laravel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Rawaby88\\OpenWeatherMap\\Providers\\OpenWeatherServiceProvider',
+    ),
+  ),
+  'solgenpower/laravel-openweather' => 
+  array (
+    'aliases' => 
+    array (
+      'OpenWeather' => 'SolgenPower\\LaravelOpenWeather\\Facades\\OpenWeather',
+    ),
+    'providers' => 
+    array (
+      0 => 'SolgenPower\\LaravelOpenWeather\\OpenWeatherServiceProvider',
+    ),
+  ),
 );

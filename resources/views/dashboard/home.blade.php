@@ -39,6 +39,32 @@
         </div>
     </div>
 
+    <!-- ==================== TAMBAHAN: CARD CUACA & UMUR ==================== -->
+    <div class="stats-grid" style="margin-top: -15px;">
+        <div class="stat-card">
+            <div class="stat-icon">🌤️</div>
+            <div class="stat-info">
+                <h3 id="cuacaText">Memuat...</h3>
+                <p id="suhuText">Suhu: --°C</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">☔</div>
+            <div class="stat-info">
+                <h3 id="hujanText">0 <span>mm</span></h3>
+                <p>Intensitas Hujan</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-info">
+                <h3 id="umurText">{{ $umur_minggu ?? 0 }} <span>Minggu</span></h3>
+                <p>Umur Budidaya</p>
+            </div>
+        </div>
+    </div>
+    <!-- ============================================================= -->
+
     <!-- ALERT BOX -->
     <div id="alertBox" class="alert-premium normal">✅ Memuat data sensor...</div>
 
@@ -87,6 +113,7 @@
                 <li><span>Frekuensi</span><strong>3x sehari</strong></li>
                 <li><span>Waktu</span><strong>Pagi | Siang | Sore</strong></li>
                 <li><span>Berdasarkan</span><strong>Kondisi air & biomassa</strong></li>
+                <li><span>Cuaca Saat Ini</span><strong id="cuacaFeedInfo">Memuat...</strong></li>
             </ul>
             <div class="feed-box">
                 <div class="feed-label">ESTIMASI PAKAN</div>
@@ -130,6 +157,8 @@
                 <li><span>Berat Rata-rata</span><strong id="beratRata">{{ $berat_rata ?? 0 }} gram</strong></li>
                 <li><span>Biomassa</span><strong id="biomassa">{{ round(($biomassa ?? 0) / 1000, 2) }} kg</strong></li>
                 <li><span>Populasi</span><strong>{{ number_format($populasi ?? 5000) }} ekor</strong></li>
+                <li><span>Target Panen</span><strong id="targetPanen">{{ $target_panen_kg ?? 0 }} kg</strong></li>
+                <li><span>Target Size</span><strong id="targetSize">{{ $target_size_gram ?? 0 }} gram</strong></li>
             </ul>
         </div>
     </div>
@@ -170,6 +199,8 @@
         
         if (typeof initAllCharts === 'function') setTimeout(initAllCharts, 100);
         if (typeof loadRealtime === 'function') { loadRealtime(); setInterval(loadRealtime, 3000); }
+        if (typeof loadCuaca === 'function') { loadCuaca(); setInterval(loadCuaca, 30000); }
+        if (typeof loadProductionData === 'function') { loadProductionData(); setInterval(loadProductionData, 30000); }
     });
 </script>
 @endpush

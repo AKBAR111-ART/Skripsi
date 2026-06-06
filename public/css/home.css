@@ -415,6 +415,7 @@
         font-size: 22px;
     }
 }
+
 /* ==================== GRAFIK PREMIUM ==================== */
 .charts-grid {
     display: grid;
@@ -492,6 +493,7 @@
     font-size: 11px;
     color: #4a5568;
 }
+
 .gauge-canvas {
     position: relative;
     width: 180px;

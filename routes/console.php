@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\UpdateSensor5MinAvg;
 use App\Console\Commands\ResetDailyMonitoringData;
 use App\Jobs\UpdateRealtimeMonitoring;
+use Illuminate\Support\Facades\Log;
 /*
 |--------------------------------------------------------------------------
 | Console Routes
@@ -17,6 +18,35 @@ use App\Jobs\UpdateRealtimeMonitoring;
 |
 */
 
+use App\Models\JadwalPengingat;
+use App\Models\PengaturanTambak;
+
+// Schedule untuk mengirim pengingat WhatsApp setiap menit
+Schedule::call(function () {
+    $now = now()->format('H:i');
+    $today = now()->toDateString();
+    
+    // Cek tanggal mulai
+    $pengaturan = PengaturanTambak::first();
+    if ($pengaturan && $pengaturan->tanggal && $today < $pengaturan->tanggal) {
+        return; // Belum waktunya kirim
+    }
+    
+    // Cari jadwal yang waktunya sama dengan sekarang
+    $jadwals = JadwalPengingat::where('jam', $now)
+        ->where('is_sent', false)
+        ->get();
+    
+    foreach ($jadwals as $jadwal) {
+        // Ganti template dengan waktu
+        $pesan = str_replace('{{waktu}}', $jadwal->jam, $jadwal->pesan);
+        
+        // Kirim WhatsApp
+        $jadwal->send();
+        
+        Log::info("Reminder sent for schedule {$jadwal->jam}");
+    }
+})->everyMinute();
 // Schedule untuk agregasi data sensor setiap 5 menit
 Schedule::command('sensor:aggregate')->everyFiveMinutes();
 

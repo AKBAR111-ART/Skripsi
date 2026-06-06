@@ -8,7 +8,10 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "rakibdevs/openweather-laravel-api": "^1.9",
+        "rawaby88/open-weather-laravel": "^1.0",
+        "solgenpower/laravel-openweather": "^0.2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

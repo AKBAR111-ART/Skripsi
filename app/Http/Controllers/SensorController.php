@@ -1,19 +1,363 @@
 <?php
     namespace App\Http\Controllers;
-
+    
+    use App\Models\TambakProfile; 
     use App\Models\Sensor;
     use App\Models\SensorRealtime;
     use App\Models\RuleSensor;
     use App\Models\SensorCalibration;
+    use App\Services\WeatherService;
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\DB;
     use Illuminate\Support\Facades\Cache;
     use Illuminate\Support\Facades\Log;
+    use Illuminate\Support\Facades\Http;
     use Carbon\Carbon;
 
     class SensorController extends Controller
     {
         private $BATCH_SIZE = 10;
+        
+        /**
+         * NOTIFIKASI WHATSAPP (FONNTE)
+         */
+        private function sendWhatsAppNotification($message, $target = null)
+        {
+            try {
+                $targetNumber = $target ?? env('FONNTE_TARGET', '62895379348181');
+                $apiKey = env('FONNTE_TOKEN');
+                
+                if (!$apiKey) {
+                    Log::warning('FONNTE_TOKEN not set in .env');
+                    return false;
+                }
+                
+                $response = Http::withHeaders([
+                    'Authorization' => $apiKey
+                ])->post('https://api.fonnte.com/send', [
+                    'target' => $targetNumber,
+                    'message' => $message
+                ]);
+                
+                if ($response->successful()) {
+                    Log::info('WhatsApp notification sent', ['message' => $message]);
+                    return true;
+                }
+                
+                Log::error('WhatsApp notification failed', ['response' => $response->body()]);
+                return false;
+                
+            } catch (\Exception $e) {
+                Log::error('WhatsApp error: ' . $e->getMessage());
+                return false;
+            }
+        }
+        
+        /**
+         * CEK DAN KIRIM NOTIFIKASI BERDASARKAN KONDISI
+         */
+        private function cekDanKirimNotifikasi($ph, $turbidity, $statusPh, $statusTurbidity, $cuaca, $intensitasHujan, $rekomendasi)
+        {
+            $notifikasiDikirim = false;
+            $lastNotifKey = 'last_notification_sent';
+            $lastNotif = Cache::get($lastNotifKey);
+            $now = now();
+            
+            // Cek apakah sudah pernah kirim notif dalam 1 jam terakhir
+            if ($lastNotif && $lastNotif->diffInHours($now) < 1) {
+                return false;
+            }
+            
+            $message = "";
+            $isBahaya = ($statusPh === 'bahaya' || $statusTurbidity === 'bahaya');
+            $isPeringatan = ($statusPh === 'peringatan' || $statusTurbidity === 'peringatan');
+            $isHujan = ($cuaca === 'Hujan' && $intensitasHujan > 0);
+            
+            // ============================================
+            // PRIORITAS 1: KONDISI BAHAYA
+            // ============================================
+            if ($isBahaya) {
+                $message = "🔴 *PERINGATAN BAHAYA!* 🔴\n\n";
+                $message .= "📍 *Kondisi Tambak Kritis!*\n";
+                $message .= "──────────────────\n";
+                $message .= "🦐 *pH Air:* {$ph} (BAHAYA)\n";
+                $message .= "💧 *Kekeruhan:* {$turbidity} NTU (BAHAYA)\n";
+                if ($isHujan) {
+                    $message .= "🌧️ *Cuaca:* {$cuaca} ({$intensitasHujan} mm)\n";
+                }
+                $message .= "──────────────────\n";
+                $message .= "⚠️ *TINDAKAN YANG HARUS DILAKUKAN:*\n";
+                $message .= "1. Hentikan pemberian pakan\n";
+                $message .= "2. Cek kualitas air secara manual\n";
+                $message .= "3. Lakukan pergantian air 30-50%\n";
+                $message .= "4. Hubungi teknisi tambak\n\n";
+                $message .= "⏰ *Waktu:* " . $now->format('d/m/Y H:i:s');
+                
+                $this->sendWhatsAppNotification($message);
+                Cache::put($lastNotifKey, $now, now()->addHours(1));
+                return true;
+            }
+            
+            // ============================================
+            // PRIORITAS 2: HUJAN + PERINGATAN (Kombinasi)
+            // ============================================
+            if ($isHujan && $isPeringatan) {
+                $message = "⚠️ *KOMBINASI BERBAHAYA!* ⚠️\n\n";
+                $message .= "📍 *Hujan + Kualitas Air Tidak Stabil*\n";
+                $message .= "──────────────────\n";
+                $message .= "🌧️ *Cuaca:* Hujan ({$intensitasHujan} mm)\n";
+                $message .= "🦐 *pH Air:* {$ph} (PERINGATAN)\n";
+                $message .= "💧 *Kekeruhan:* {$turbidity} NTU (PERINGATAN)\n";
+                $message .= "──────────────────\n";
+                $message .= "⚠️ *TINDAKAN YANG HARUS DILAKUKAN:*\n";
+                $message .= "1. Kurangi pakan 50-70%\n";
+                $message .= "2. Pantau kondisi air setiap 2 jam\n";
+                $message .= "3. Siapkan aerasi tambahan\n";
+                $message .= "4. Hindari pergantian air saat hujan\n\n";
+                $message .= "🍽️ *Rekomendasi Pakan:* {$rekomendasi} kg/hari\n\n";
+                $message .= "⏰ *Waktu:* " . $now->format('d/m/Y H:i:s');
+                
+                $this->sendWhatsAppNotification($message);
+                Cache::put($lastNotifKey, $now, now()->addHours(1));
+                return true;
+            }
+            
+            // ============================================
+            // PRIORITAS 3: HUJAN SAJA
+            // ============================================
+            if ($isHujan && $intensitasHujan > 5) {
+                $message = "🌧️ *PERINGATAN HUJAN LEBAT!* 🌧️\n\n";
+                $message .= "📍 *Cuaca Buruk Terdeteksi*\n";
+                $message .= "──────────────────\n";
+                $message .= "🌧️ *Intensitas:* {$intensitasHujan} mm\n";
+                $message .= "🦐 *Kondisi Air:* pH {$ph} | NTU {$turbidity}\n";
+                $message .= "──────────────────\n";
+                $message .= "⚠️ *TINDAKAN YANG HARUS DILAKUKAN:*\n";
+                $message .= "1. Kurangi pakan 50%\n";
+                $message .= "2. Periksa saluran air\n";
+                $message .= "3. Pastikan aerasi berjalan normal\n\n";
+                $message .= "🍽️ *Rekomendasi Pakan:* {$rekomendasi} kg/hari\n\n";
+                $message .= "⏰ *Waktu:* " . $now->format('d/m/Y H:i:s');
+                
+                $this->sendWhatsAppNotification($message);
+                Cache::put($lastNotifKey, $now, now()->addHours(1));
+                return true;
+            }
+            
+            // ============================================
+            // PRIORITAS 4: PERINGATAN SAJA
+            // ============================================
+            if ($isPeringatan) {
+                $message = "⚠️ *PERINGATAN KUALITAS AIR!* ⚠️\n\n";
+                $message .= "📍 *Kualitas Air Tidak Stabil*\n";
+                $message .= "──────────────────\n";
+                $message .= "🦐 *pH Air:* {$ph} (PERINGATAN)\n";
+                $message .= "💧 *Kekeruhan:* {$turbidity} NTU (PERINGATAN)\n";
+                $message .= "──────────────────\n";
+                $message .= "⚠️ *TINDAKAN YANG HARUS DILAKUKAN:*\n";
+                $message .= "1. Kurangi pakan 50%\n";
+                $message .= "2. Cek sumber air\n";
+                $message .= "3. Tambah probiotik jika perlu\n\n";
+                $message .= "🍽️ *Rekomendasi Pakan:* {$rekomendasi} kg/hari\n\n";
+                $message .= "⏰ *Waktu:* " . $now->format('d/m/Y H:i:s');
+                
+                $this->sendWhatsAppNotification($message);
+                Cache::put($lastNotifKey, $now, now()->addHours(1));
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /**
+         * HITUNG REKOMENDASI PAKAN TERINTEGRASI
+         * (Menggabungkan: Biomassa + Feeding Rate + Faktor Air + Faktor Cuaca)
+         */
+       /**
+ * HITUNG REKOMENDASI PAKAN TERINTEGRASI (DIPERBAIKI)
+ */
+private function hitungRekomendasiPakanTerintegrasi($ph, $turbidity, $profile, $weatherData)
+{
+    // ============================================
+    // STEP 1: Hitung Biomassa & Umur
+    // ============================================
+    $biomassaKg = $profile->biomassa_kg;
+    $umurHari = $profile->umur_hari;
+    $populasi = $profile->populasi;
+    $avgWeight = $profile->avg_weight;
+    
+    // ============================================
+    // STEP 2: Hitung Feeding Rate (DIPERBAIKI - LEBIH REALISTIS)
+    // ============================================
+    if ($umurHari <= 7) {
+        $feedingRate = 0.10;      // 10% - Minggu pertama
+        $keteranganUmur = 'Awal tebar (0-7 hari) - Maks 10% biomassa';
+    } elseif ($umurHari <= 14) {
+        $feedingRate = 0.08;      // 8% - Minggu kedua
+        $keteranganUmur = 'Pertumbuhan awal (8-14 hari) - Maks 8% biomassa';
+    } elseif ($umurHari <= 21) {
+        $feedingRate = 0.07;      // 7% - Minggu ketiga
+        $keteranganUmur = 'Pertumbuhan aktif (15-21 hari) - Maks 7% biomassa';
+    } elseif ($umurHari <= 28) {
+        $feedingRate = 0.06;      // 6% - Minggu keempat
+        $keteranganUmur = 'Pertumbuhan lanjut (22-28 hari) - Maks 6% biomassa';
+    } elseif ($umurHari <= 42) {
+        $feedingRate = 0.05;      // 5% - Minggu 5-6
+        $keteranganUmur = 'Pertumbuhan maksimal (29-42 hari) - Maks 5% biomassa';
+    } elseif ($umurHari <= 56) {
+        $feedingRate = 0.04;      // 4% - Minggu 7-8
+        $keteranganUmur = 'Menjelang panen (43-56 hari) - Maks 4% biomassa';
+    } else {
+        $feedingRate = 0.03;      // 3% - >56 hari
+        $keteranganUmur = 'Panen (>56 hari) - Maks 3% biomassa';
+    }
+    
+    // ============================================
+    // STEP 3: Hitung FAKTOR AIR (berdasarkan pH & NTU)
+    // ============================================
+    $rule = $this->getRuleFromCache();
+    $statusPh = $this->getPhStatus($ph, $rule);
+    $statusTurbidity = $this->getTurbidityStatus($turbidity, $rule);
+    
+    // Tentukan faktor air (ambil yang terburuk)
+    if ($statusPh === 'bahaya' || $statusTurbidity === 'bahaya') {
+        $faktorAir = 0;      // STOP PAKAN
+        $statusAir = 'bahaya';
+    } elseif ($statusPh === 'peringatan' || $statusTurbidity === 'peringatan') {
+        $faktorAir = 0.5;    // KURANGI 50%
+        $statusAir = 'peringatan';
+    } else {
+        $faktorAir = 1.0;    // NORMAL
+        $statusAir = 'aman';
+    }
+    
+    // ============================================
+    // STEP 4: Hitung FAKTOR CUACA
+    // ============================================
+    $cuaca = $weatherData['cuaca'] ?? 'Cerah';
+    $intensitasHujan = $weatherData['intensitas_hujan'] ?? 0;
+    $suhuLingkungan = $weatherData['suhu'] ?? 28;
+    
+    if ($cuaca === 'Hujan') {
+        if ($intensitasHujan > 10) {
+            $faktorCuaca = 0.3;      // Hujan lebat, kurangi 70%
+            $statusCuaca = 'hujan_lebat';
+            $keteranganCuaca = 'Hujan lebat >10mm - kurangi pakan 70%';
+        } elseif ($intensitasHujan > 2) {
+            $faktorCuaca = 0.6;      // Hujan sedang, kurangi 40%
+            $statusCuaca = 'hujan_sedang';
+            $keteranganCuaca = 'Hujan sedang - kurangi pakan 40%';
+        } else {
+            $faktorCuaca = 0.8;      // Hujan gerimis, kurangi 20%
+            $statusCuaca = 'hujan_ringan';
+            $keteranganCuaca = 'Hujan ringan - kurangi pakan 20%';
+        }
+    } else {
+        $faktorCuaca = 1.0;          // Cerah/Berawan, normal
+        $statusCuaca = 'cerah';
+        $keteranganCuaca = 'Cuaca cerah/berawan - pakan normal';
+    }
+    
+    // Jika air sudah bahaya, faktor cuaca diabaikan (pakan sudah 0)
+    if ($faktorAir == 0) {
+        $faktorCuaca = 1.0;
+        $statusCuaca = 'diabaikan';
+        $keteranganCuaca = 'Faktor cuaca diabaikan karena kondisi air bahaya';
+    }
+    
+    // ============================================
+    // STEP 5: Hitung Rekomendasi Akhir
+    // ============================================
+    $pakanDasarKg = round($biomassaKg * $feedingRate, 2);
+    $pakanSetelahAir = round($pakanDasarKg * $faktorAir, 2);
+    $pakanRekomendasiKg = round($pakanSetelahAir * $faktorCuaca, 2);
+    
+    // ============================================
+    // BATASAN MAKSIMAL PAKAN (TAMBAHAN PENTING!)
+    // ============================================
+    // Maksimal pakan tidak boleh lebih dari 8% biomassa untuk keamanan
+    $maxPakan = round($biomassaKg * 0.08, 2);
+    if ($pakanRekomendasiKg > $maxPakan && $umurHari > 14) {
+        $pakanRekomendasiKg = $maxPakan;
+        Log::info('Pakan direduksi ke batas maksimal 8% biomassa', [
+            'original' => $pakanRekomendasiKg,
+            'max' => $maxPakan
+        ]);
+    }
+    
+    // Minimal pakan 0.5 kg jika kondisi normal
+    if ($pakanRekomendasiKg < 0.5 && $statusAir !== 'bahaya' && $faktorAir > 0) {
+        $pakanRekomendasiKg = 0.5;
+    }
+    
+    // ============================================
+    // STEP 6: Hitung metode populasi (referensi)
+    // ============================================
+    $umurMinggu = ceil($umurHari / 7);
+    $pakanPerEkor = $this->getPakanPerEkor($umurMinggu);
+    $pakanDasarPopulasiGram = $populasi * $pakanPerEkor;
+    $pakanDasarPopulasiGram = max(50, min($pakanDasarPopulasiGram, 10000));
+    $pakanDasarPopulasiKg = round($pakanDasarPopulasiGram / 1000, 2);
+    $pakanRekomendasiPopulasiKg = round($pakanDasarPopulasiKg * $faktorAir * $faktorCuaca, 2);
+    
+    // ============================================
+    // LOGGING UNTUK DEBUG
+    // ============================================
+    Log::info('Rekomendasi Pakan Terintegrasi (Fix)', [
+        'biomassa_kg' => $biomassaKg,
+        'umur_hari' => $umurHari,
+        'feeding_rate' => $feedingRate,
+        'pakan_dasar_kg' => $pakanDasarKg,
+        'status_ph' => $statusPh,
+        'status_turbidity' => $statusTurbidity,
+        'faktor_air' => $faktorAir,
+        'cuaca' => $cuaca,
+        'intensitas_hujan' => $intensitasHujan,
+        'faktor_cuaca' => $faktorCuaca,
+        'rekomendasi_kg' => $pakanRekomendasiKg,
+        'max_pakan' => $maxPakan
+    ]);
+    
+    return [
+        // Hasil utama
+        'rekomendasi_kg' => $pakanRekomendasiKg,
+        'rekomendasi_gram' => round($pakanRekomendasiKg * 1000),
+        
+        // Detail perhitungan
+        'pakan_dasar_kg' => $pakanDasarKg,
+        'pakan_setelah_air_kg' => $pakanSetelahAir,
+        'faktor_air' => $faktorAir,
+        'faktor_cuaca' => $faktorCuaca,
+        'feeding_rate' => $feedingRate,
+        'keterangan_umur' => $keteranganUmur,
+        'keterangan_cuaca' => $keteranganCuaca,
+        
+        // Status
+        'status_air' => $statusAir,
+        'status_cuaca' => $statusCuaca,
+        'status_ph' => $statusPh,
+        'status_turbidity' => $statusTurbidity,
+        
+        // Data pendukung
+        'biomassa_kg' => $biomassaKg,
+        'umur_hari' => $umurHari,
+        'umur_minggu' => $umurMinggu,
+        'populasi' => $populasi,
+        'avg_weight' => $avgWeight,
+        'ph' => $ph,
+        'turbidity' => $turbidity,
+        'cuaca' => $cuaca,
+        'intensitas_hujan' => $intensitasHujan,
+        'suhu_lingkungan' => $suhuLingkungan,
+        
+        // Metode populasi (referensi)
+        'metode_populasi' => [
+            'pakan_per_ekor_gram' => $pakanPerEkor,
+            'pakan_dasar_kg' => $pakanDasarPopulasiKg,
+            'rekomendasi_kg' => $pakanRekomendasiPopulasiKg
+        ]
+    ];
+}
         
         /**
          * Terima data dari ESP32
@@ -27,7 +371,20 @@
                 $validated = $request->validate([
                     'ph' => 'nullable|numeric|min:0|max:14',
                     'turbidity' => 'nullable|numeric|min:0|max:1000',
+                    'api_key' => 'nullable|string'
                 ]);
+                
+                // ============================================
+                // CEK API KEY (WAJIB)
+                // ============================================
+                $apiKey = $request->get('api_key') ?? $request->header('X-API-Key');
+                if ($apiKey !== env('ESP32_API_KEY')) {
+                    Log::warning('Invalid API Key from ESP32', ['received' => $apiKey]);
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Unauthorized - Invalid API Key'
+                    ], 401);
+                }
                 
                 $ph = $validated['ph'] ?? null;
                 $turbidity = $validated['turbidity'] ?? null;
@@ -48,14 +405,88 @@
                 
                 $this->updateRealtime($ph, $statusPh, $turbidity, $statusTurbidity);
                 
+                // ============================================
+                // AMBIL DATA TAMBAK PROFILE & CUACA
+                // ============================================
+                $profile = TambakProfile::first();
+                
+                $weatherService = new WeatherService();
+                $weatherData = $weatherService->getWeather();
+                
+                $cuaca = $weatherData['cuaca'];
+                $intensitasHujan = $weatherData['intensitas_hujan'];
+                $suhuLingkungan = $weatherData['suhu'];
+                
+                // ============================================
+                // HITUNG REKOMENDASI PAKAN TERINTEGRASI
+                // ============================================
+                $rekomendasiData = [];
+                if ($profile && $ph && $turbidity) {
+                    $rekomendasiData = $this->hitungRekomendasiPakanTerintegrasi($ph, $turbidity, $profile, $weatherData);
+                }
+                
+                // ============================================
+                // SIMPAN DATA CUACA KE DATABASE
+                // ============================================
+                if ($profile) {
+                    $profile->update([
+                        'cuaca' => $cuaca,
+                        'intensitas_hujan' => $intensitasHujan
+                    ]);
+                    Log::info('Weather data saved to tambak_profile', [
+                        'cuaca' => $cuaca,
+                        'intensitas_hujan' => $intensitasHujan
+                    ]);
+                }
+                
+                // ============================================
+                // KIRIM NOTIFIKASI WHATSAPP (JIKA KONDISI BERBAHAYA)
+                // ============================================
+                $this->cekDanKirimNotifikasi(
+                    $ph, 
+                    $turbidity, 
+                    $statusPh, 
+                    $statusTurbidity, 
+                    $cuaca, 
+                    $intensitasHujan,
+                    $rekomendasiData['rekomendasi_kg'] ?? 0
+                );
+                
+                // ============================================
+                // RESPONSE LENGKAP UNTUK ESP32
+                // ============================================
                 return response()->json([
                     'success' => true,
                     'message' => 'Data sensor diterima',
                     'data' => [
+                        // Data sensor dari ESP32
                         'ph' => $ph,
                         'ph_status' => $statusPh,
                         'turbidity' => $turbidity,
-                        'turbidity_status' => $statusTurbidity
+                        'turbidity_status' => $statusTurbidity,
+                        
+                        // Data produksi dari database
+                        'populasi' => $profile->populasi ?? null,
+                        'avg_weight' => $profile->avg_weight ?? null,
+                        'biomassa_kg' => $profile->biomassa_kg ?? null,
+                        'umur_hari' => $profile->umur_hari ?? null,
+                        
+                        // ========== REKOMENDASI PAKAN (TERINTEGRASI) ==========
+                        'rekomendasi_pakan_kg' => $rekomendasiData['rekomendasi_kg'] ?? 0,
+                        'rekomendasi_pakan_gram' => $rekomendasiData['rekomendasi_gram'] ?? 0,
+                        'pakan_dasar_kg' => $rekomendasiData['pakan_dasar_kg'] ?? 0,
+                        'faktor_air' => $rekomendasiData['faktor_air'] ?? 1,
+                        'faktor_cuaca' => $rekomendasiData['faktor_cuaca'] ?? 1,
+                        'status_air' => $rekomendasiData['status_air'] ?? 'aman',
+                        'status_cuaca' => $rekomendasiData['status_cuaca'] ?? 'cerah',
+                        'keterangan' => $this->getKeteranganRekomendasi($rekomendasiData),
+                        
+                        // Data cuaca dari API
+                        'cuaca' => $cuaca,
+                        'intensitas_hujan' => $intensitasHujan,
+                        'suhu_lingkungan' => $suhuLingkungan,
+                        
+                        'last_update' => now()->toDateTimeString()
                     ]
                 ], 201);
                 
@@ -69,200 +500,18 @@
         }
         
         /**
-         * ENDPOINT UNTUK ESP32 MENGAMBIL PERINTAH (GET COMMAND)
-         * GET /api/sensor/command
+         * GET FEEDING RECOMMENDATION (TERINTEGRASI)
          */
-        public function getCommand(Request $request)
-        {
-            try {
-                Log::info('ESP32 requesting command:', $request->all());
-                
-                $deviceId = $request->query('device_id', 'unknown');
-                $lastCommand = $request->query('last_command', null);
-                
-                $realtime = DB::table('sensor_realtime')->first();
-                $rule = $this->getRuleFromCache();
-                $feedingRecommendation = $this->calculateFeedingCommand($realtime, $rule);
-                
-                $command = [
-                    'action' => 'read_sensor',
-                    'interval' => 30,
-                    'relay_1' => false,
-                    'relay_2' => false,
-                    'auto_mode' => true,
-                    'feeding' => $feedingRecommendation
-                ];
-                
-                if ($realtime) {
-                    $phStatus = $this->getPhStatus($realtime->ph, $rule);
-                    $turbidityStatus = $this->getTurbidityStatus($realtime->turbidity, $rule);
-                    
-                    if ($phStatus === 'bahaya' || $turbidityStatus === 'bahaya') {
-                        $command['action'] = 'warning';
-                        $command['warning_message'] = 'Kualitas air berbahaya! Periksa kolam.';
-                        $command['relay_1'] = true;
-                    } elseif ($phStatus === 'peringatan' || $turbidityStatus === 'peringatan') {
-                        $command['action'] = 'caution';
-                        $command['caution_message'] = 'Kualitas air kurang baik.';
-                    }
-                }
-                
-                Log::info('Command sent to ESP32 (' . $deviceId . '):', $command);
-                
-                return response()->json([
-                    'success' => true,
-                    'command' => $command,
-                    'timestamp' => now()->toIso8601String(),
-                    'device_id' => $deviceId
-                ], 200);
-                
-            } catch (\Exception $e) {
-                Log::error('Get command error: ' . $e->getMessage());
-                
-                return response()->json([
-                    'success' => false,
-                    'command' => [
-                        'action' => 'read_sensor',
-                        'interval' => 60
-                    ],
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-        }
-        
-        /**
-         * Helper untuk menghitung rekomendasi pakan dalam bentuk command
-         */
-        private function calculateFeedingCommand($realtime, $rule)
-        {
-            if (!$realtime) {
-                return [
-                    'recommended' => false,
-                    'amount_kg' => 0,
-                    'amount_gram' => 0
-                ];
-            }
-            
-            $phStatus = $this->getPhStatus($realtime->ph, $rule);
-            $turbidityStatus = $this->getTurbidityStatus($realtime->turbidity, $rule);
-            
-            $canFeed = ($phStatus !== 'bahaya' && $turbidityStatus !== 'bahaya');
-            
-            return [
-                'recommended' => $canFeed,
-                'ph_status' => $phStatus,
-                'turbidity_status' => $turbidityStatus,
-                'amount_kg' => $canFeed ? 0.5 : 0,
-                'amount_gram' => $canFeed ? 500 : 0
-            ];
-        }
-        
-        private function getRuleFromCache()
-        {
-            Cache::forget('sensor_rule');
-            
-            return Cache::remember('sensor_rule', 600, function () {
-                return RuleSensor::first();
-            });
-        }
-        
-        public function clearRuleCache()
-        {
-            Cache::forget('sensor_rule');
-            Cache::forget('sensor_realtime_display');
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Cache rule sensor berhasil dibersihkan'
-            ]);
-        }
-        
-
-private function addToBuffer($data)
-{
-    $buffer = Cache::get('sensor_batch_buffer', []);
-    $buffer[] = $data;
-    
-    // 🔥 IDEAL: Kombinasi jumlah + waktu
-    $lastFlush = Cache::get('sensor_last_flush', now());
-    
-    // Insert jika sudah 10 data ATAU sudah 1 menit
-    if (count($buffer) >= $this->BATCH_SIZE || $lastFlush->diffInSeconds(now()) >= 60) {
-        DB::table('sensors')->insert($buffer);
-        Cache::forget('sensor_batch_buffer');
-        Cache::put('sensor_last_flush', now());
-        Log::info('Batch inserted: ' . count($buffer) . ' records');
-    } else {
-        Cache::put('sensor_batch_buffer', $buffer, now()->addMinutes(2));
-    }
-}
-        
-        private function updateRealtime($ph, $statusPh, $turbidity, $statusTurbidity)
-        {
-            Log::info('Updating realtime with:', [
-                'ph' => $ph,
-                'statusPh' => $statusPh,
-                'turbidity' => $turbidity,
-                'statusTurbidity' => $statusTurbidity
-            ]);
-            
-            $exists = DB::table('sensor_realtime')->exists();
-            
-            if ($exists) {
-                DB::table('sensor_realtime')->update([
-                    'ph' => $ph,
-                    'ph_status' => $statusPh,
-                    'turbidity' => $turbidity,
-                    'turbidity_status' => $statusTurbidity,
-                    'updated_at' => now()
-                ]);
-                Log::info('Updated existing realtime record');
-            } else {
-                DB::table('sensor_realtime')->insert([
-                    'id' => 1,
-                    'ph' => $ph,
-                    'ph_status' => $statusPh,
-                    'turbidity' => $turbidity,
-                    'turbidity_status' => $statusTurbidity,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-                Log::info('Created new realtime record');
-            }
-            
-            Cache::put('sensor_realtime_display', [
-                'ph' => (float)$ph,
-                'ph_status' => $statusPh,
-                'turbidity' => (float)$turbidity,
-                'turbidity_status' => $statusTurbidity,
-                'last_update' => now()
-            ], now()->addSeconds(5));
-        }
-        
-        public function latest()
-        {
-            return $this->realtime();
-        }
-        
-        public function history(Request $request)
-        {
-            $limit = $request->get('limit', 24);
-            $sensors = DB::table('sensors')
-                ->latest()
-                ->limit($limit)
-                ->get();
-            
-            return response()->json([
-                'success' => true,
-                'data' => $sensors
-            ]);
-        }
-        
         public function getFeedingRecommendation()
         {
             try {
                 $sensor = DB::table('sensor_realtime')->first();
-                $profile = DB::table('tambak_profile')->first();
+                $profile = TambakProfile::first();
+                
+                Log::info('Feeding recommendation requested', [
+                    'sensor_ph' => $sensor->ph ?? 'null',
+                    'sensor_turbidity' => $sensor->turbidity ?? 'null'
+                ]);
                 
                 if (!$profile || !$profile->populasi) {
                     return response()->json([
@@ -271,57 +520,21 @@ private function addToBuffer($data)
                     ], 400);
                 }
                 
-                $umurMinggu = 1;
-                if ($profile->tanggal_mulai_budidaya) {
-                    $start = Carbon::parse($profile->tanggal_mulai_budidaya);
-                    $umurHari = $start->diffInDays(now());
-                    $umurMinggu = max(1, ceil($umurHari / 7));
-                }
+                // Ambil data cuaca
+                $weatherService = new WeatherService();
+                $weatherData = $weatherService->getWeather();
                 
-                $pakanPerEkor = $this->getPakanPerEkor($umurMinggu);
-                $populasi = $profile->populasi;
-                $pakanDasarGram = $populasi * $pakanPerEkor;
-                $pakanDasarGram = max(50, min($pakanDasarGram, 10000));
-                
-                $rule = $this->getRuleFromCache();
-                $calibratedPh = SensorCalibration::getCalibratedValue($sensor->ph ?? 7, 'ph');
-                $calibratedTurbidity = SensorCalibration::getCalibratedValue($sensor->turbidity ?? 30, 'turbidity');
-                
-                $phStatus = $this->getPhStatus($calibratedPh, $rule);
-                $turbidityStatus = $this->getTurbidityStatus($calibratedTurbidity, $rule);
-                
-                $faktorPakan = 1.0;
-                $statusKeseluruhan = 'aman';
-                
-                if ($phStatus === 'bahaya' || $turbidityStatus === 'bahaya') {
-                    $faktorPakan = 0;
-                    $statusKeseluruhan = 'bahaya';
-                } elseif ($phStatus === 'peringatan' || $turbidityStatus === 'peringatan') {
-                    $faktorPakan = 0.5;
-                    $statusKeseluruhan = 'peringatan';
-                }
-                
-                $pakanRekomendasiGram = round($pakanDasarGram * $faktorPakan);
-                $pakanRekomendasiKg = round($pakanRekomendasiGram / 1000, 2);
+                // Hitung rekomendasi terintegrasi
+                $rekomendasi = $this->hitungRekomendasiPakanTerintegrasi(
+                    $sensor->ph ?? 7, 
+                    $sensor->turbidity ?? 30, 
+                    $profile, 
+                    $weatherData
+                );
                 
                 return response()->json([
                     'success' => true,
-                    'data' => [
-                        'umur_minggu' => $umurMinggu,
-                        'populasi' => $populasi,
-                        'pakan_per_ekor' => $pakanPerEkor,
-                        'pakan_dasar_gram' => (int)$pakanDasarGram,
-                        'ph' => (float)$calibratedPh,
-                        'ph_status' => $phStatus,
-                        'turbidity' => (float)$calibratedTurbidity,
-                        'turbidity_status' => $turbidityStatus,
-                        'status_keseluruhan' => $statusKeseluruhan,
-                        'faktor_pakan' => $faktorPakan,
-                        'pakan_rekomendasi_gram' => $pakanRekomendasiGram,
-                        'pakan_rekomendasi_kg' => $pakanRekomendasiKg,
-                        'pakan_rekomendasi_text' => $pakanRekomendasiKg . ' kg (' . number_format($pakanRekomendasiGram) . ' gram)',
-                        'keterangan' => $this->getKeterangan($statusKeseluruhan)
-                    ]
+                    'data' => $rekomendasi
                 ]);
                 
             } catch (\Exception $e) {
@@ -330,19 +543,57 @@ private function addToBuffer($data)
                 return response()->json([
                     'success' => true,
                     'data' => [
-                        'pakan_rekomendasi_gram' => 500,
-                        'pakan_rekomendasi_kg' => 0.5,
-                        'umur_minggu' => 2,
-                        'populasi' => 5000,
-                        'ph' => 7.0,
-                        'ph_status' => 'normal',
-                        'turbidity' => 50,
-                        'turbidity_status' => 'normal',
-                        'status_keseluruhan' => 'normal',
-                        'keterangan' => '✅ Data default'
+                        'rekomendasi_kg' => 0.5,
+                        'rekomendasi_gram' => 500,
+                        'keterangan' => '✅ Data default (gunakan data profil yang valid)'
                     ]
                 ]);
             }
+        }
+        
+        /**
+         * GET KETERANGAN REKOMENDASI
+         */
+        private function getKeteranganRekomendasi($rekomendasiData)
+        {
+            $statusAir = $rekomendasiData['status_air'] ?? 'aman';
+            $statusCuaca = $rekomendasiData['status_cuaca'] ?? 'cerah';
+            $faktorAir = $rekomendasiData['faktor_air'] ?? 1;
+            $faktorCuaca = $rekomendasiData['faktor_cuaca'] ?? 1;
+            
+            if ($statusAir === 'bahaya') {
+                return '🔴 KONDISI AIR BAHAYA! Hentikan pemberian pakan sementara. Periksa kolam segera!';
+            }
+            
+            if ($statusAir === 'peringatan' && $statusCuaca === 'hujan_lebat') {
+                return '⚠️ PERINGATAN! Hujan lebat + kualitas air kurang baik. Kurangi pakan 70%. Pantau ketat!';
+            }
+            
+            if ($statusAir === 'peringatan' && $statusCuaca === 'hujan_sedang') {
+                return '⚠️ PERINGATAN! Hujan sedang + kualitas air kurang baik. Kurangi pakan 50%.';
+            }
+            
+            if ($statusAir === 'peringatan' && $statusCuaca === 'hujan_ringan') {
+                return '⚠️ PERINGATAN! Hujan gerimis + kualitas air kurang baik. Kurangi pakan 40%.';
+            }
+            
+            if ($statusAir === 'peringatan') {
+                return '⚠️ Kualitas air kurang baik. Kurangi pakan 50%.';
+            }
+            
+            if ($statusCuaca === 'hujan_lebat') {
+                return '🌧️ HUJAN LEBAT! Kurangi pakan 70%. Udang stres, kurangi frekuensi pemberian.';
+            }
+            
+            if ($statusCuaca === 'hujan_sedang') {
+                return '🌧️ HUJAN SEDANG! Kurangi pakan 40%. Pantau kualitas air.';
+            }
+            
+            if ($statusCuaca === 'hujan_ringan') {
+                return '🌦️ HUJAN RINGAN! Kurangi pakan 20%.';
+            }
+            
+            return '✅ Kualitas air optimal. Berikan pakan sesuai jadwal.';
         }
         
         private function getPakanPerEkor($umurMinggu)
@@ -377,21 +628,32 @@ private function addToBuffer($data)
             }
         }
         
+        /**
+         * Status pH berdasarkan rule (dengan logging)
+         */
         private function getPhStatus($ph, $rule = null)
         {
             if (!$rule) return 'aman';
             
+            // CEK BAHAYA DULU
             if ($ph < $rule->ph_danger_low || $ph > $rule->ph_danger_high) {
+                Log::info("pH {$ph} is BAHAYA (danger low: {$rule->ph_danger_low}, danger high: {$rule->ph_danger_high})");
                 return 'bahaya';
             }
             
+            // CEK PERINGATAN
             if ($ph < $rule->ph_min_good || $ph > $rule->ph_max_good) {
+                Log::info("pH {$ph} is PERINGATAN (good: {$rule->ph_min_good}-{$rule->ph_max_good})");
                 return 'peringatan';
             }
             
+            Log::info("pH {$ph} is AMAN");
             return 'aman';
         }
         
+        /**
+         * Status Turbidity berdasarkan rule (NTU - 0-1000)
+         */
         private function getTurbidityStatus($turbidity, $rule = null)
         {
             if ($turbidity === null) return 'baik';
@@ -408,14 +670,37 @@ private function addToBuffer($data)
             }
             
             if ($turbidity > $rule->turbidity_danger_high) {
+                Log::info("Turbidity {$turbidity} is BAHAYA (danger high: {$rule->turbidity_danger_high})");
                 return 'bahaya';
             }
             
             if ($turbidity > $rule->turbidity_max_good) {
+                Log::info("Turbidity {$turbidity} is PERINGATAN (max good: {$rule->turbidity_max_good})");
                 return 'peringatan';
             }
             
             return 'baik';
+        }
+        
+        /**
+         * Ambil rule dari cache dengan logging
+         */
+        private function getRuleFromCache()
+        {
+            Cache::forget('sensor_rule');
+            
+            return Cache::remember('sensor_rule', 600, function () {
+                $rule = RuleSensor::first();
+                Log::info('Rule loaded from database', [
+                    'ph_min_good' => $rule->ph_min_good ?? 'null',
+                    'ph_max_good' => $rule->ph_max_good ?? 'null',
+                    'ph_danger_low' => $rule->ph_danger_low ?? 'null',
+                    'ph_danger_high' => $rule->ph_danger_high ?? 'null',
+                    'turbidity_max_good' => $rule->turbidity_max_good ?? 'null',
+                    'turbidity_danger_high' => $rule->turbidity_danger_high ?? 'null'
+                ]);
+                return $rule;
+            });
         }
         
         public function realtime()
@@ -437,11 +722,8 @@ private function addToBuffer($data)
                 ]);
             }
             
-            $rawPh = $sensor->ph;
-            $rawTurbidity = $sensor->turbidity;
-            
-            $calibratedPh = SensorCalibration::getCalibratedValue($rawPh, 'ph');
-            $calibratedTurbidity = SensorCalibration::getCalibratedValue($rawTurbidity, 'turbidity');
+            $calibratedPh = SensorCalibration::getCalibratedValue($sensor->ph ?? 7, 'ph');
+            $calibratedTurbidity = SensorCalibration::getCalibratedValue($sensor->turbidity ?? 30, 'turbidity');
             
             $phStatus = $this->getPhStatus($calibratedPh, $rule);
             $turbidityStatus = $this->getTurbidityStatus($calibratedTurbidity, $rule);
@@ -450,10 +732,10 @@ private function addToBuffer($data)
             
             return response()->json([
                 'ph' => (float)$calibratedPh,
-                'ph_raw' => (float)$rawPh,
+                'ph_raw' => (float)$sensor->ph,
                 'ph_status' => $phStatus,
                 'turbidity' => (float)$calibratedTurbidity,
-                'turbidity_raw' => (float)$rawTurbidity,
+                'turbidity_raw' => (float)$sensor->turbidity,
                 'turbidity_status' => $turbidityStatus,
                 'is_calibrated' => $calibration->is_calibrated,
                 'noise_level' => $calibration->noise_level,
@@ -462,65 +744,137 @@ private function addToBuffer($data)
             ]);
         }
         
+        public function latest()
+        {
+            return $this->realtime();
+        }
+        
+        public function history(Request $request)
+        {
+            $limit = $request->get('limit', 24);
+            $sensors = DB::table('sensors')
+                ->latest()
+                ->limit($limit)
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $sensors
+            ]);
+        }
+        
+        private function addToBuffer($data)
+        {
+            $buffer = Cache::get('sensor_batch_buffer', []);
+            $buffer[] = $data;
+            
+            $lastFlush = Cache::get('sensor_last_flush', now());
+            
+            if (count($buffer) >= $this->BATCH_SIZE || $lastFlush->diffInSeconds(now()) >= 60) {
+                DB::table('sensors')->insert($buffer);
+                Cache::forget('sensor_batch_buffer');
+                Cache::put('sensor_last_flush', now());
+                Log::info('Batch inserted: ' . count($buffer) . ' records');
+            } else {
+                Cache::put('sensor_batch_buffer', $buffer, now()->addMinutes(2));
+            }
+        }
+        
+        private function updateRealtime($ph, $statusPh, $turbidity, $statusTurbidity)
+        {
+            $exists = DB::table('sensor_realtime')->exists();
+            
+            if ($exists) {
+                DB::table('sensor_realtime')->update([
+                    'ph' => $ph,
+                    'ph_status' => $statusPh,
+                    'turbidity' => $turbidity,
+                    'turbidity_status' => $statusTurbidity,
+                    'updated_at' => now()
+                ]);
+            } else {
+                DB::table('sensor_realtime')->insert([
+                    'id' => 1,
+                    'ph' => $ph,
+                    'ph_status' => $statusPh,
+                    'turbidity' => $turbidity,
+                    'turbidity_status' => $statusTurbidity,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            Cache::put('sensor_realtime_display', [
+                'ph' => (float)$ph,
+                'ph_status' => $statusPh,
+                'turbidity' => (float)$turbidity,
+                'turbidity_status' => $statusTurbidity,
+                'last_update' => now()
+            ], now()->addSeconds(5));
+        }
+        
         /**
          * Kirim perintah pakan
          * POST /api/sensor/send-feed-command
          */
-      public function sendFeedCommand(Request $request)
-{
-    try {
-        Log::info('Send feed command received:', $request->all());
-        
-        // Ambil parameter (dalam GRAM dari JS, atau KG dari form)
-        $pakanGram = $request->pakan_gram ?? $request->pakan ?? $request->amount_gram ?? null;
-        
-        if (!$pakanGram) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Jumlah pakan tidak ditemukan.'
-            ], 400);
+        public function sendFeedCommand(Request $request)
+        {
+            try {
+                Log::info('Send feed command received:', $request->all());
+                
+                $pakanGram = $request->pakan_gram ?? $request->pakan ?? $request->amount_gram ?? null;
+                
+                if (!$pakanGram) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Jumlah pakan tidak ditemukan.'
+                    ], 400);
+                }
+                
+                $pakanGram = (int)$pakanGram;
+                $pakanKg = round($pakanGram / 1000, 2);
+                
+                if ($pakanGram < 1 || $pakanGram > 10000) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Jumlah pakan harus antara 1-10000 gram'
+                    ], 422);
+                }
+                
+                $jadwal = $request->jadwal ?? $this->getCurrentSchedule();
+                $sumber = $request->sumber ?? 'manual';
+                
+                DB::table('feeding_records')->insert([
+                    'pakan_kg' => $pakanKg,
+                    'target_gram' => $pakanGram,
+                    'jadwal' => $jadwal,
+                    'sumber' => $sumber,
+                    'status' => 'success',
+                    'tanggal' => now()->toDateString(),
+                    'waktu_pemberian' => now()->toTimeString(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                Log::info('Feed record saved', [
+                    'pakan_gram' => $pakanGram,
+                    'pakan_kg' => $pakanKg,
+                    'jadwal' => $jadwal
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim"
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Send feed command error: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
+                ], 500);
+            }
         }
-        
-        $pakanGram = (int)$pakanGram;
-        $pakanKg = round($pakanGram / 1000, 2);
-        
-        // Validasi
-        if ($pakanGram < 1 || $pakanGram > 10000) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Jumlah pakan harus antara 1-10000 gram'
-            ], 422);
-        }
-        
-        $jadwal = $request->jadwal ?? $this->getCurrentSchedule();
-        $sumber = $request->sumber ?? 'manual';
-        
-        // 🔥 SIMPAN: pakan_kg (kg) dan target_gram (gram)
-        DB::table('feeding_records')->insert([
-            'pakan_kg' => $pakanKg,
-            'target_gram' => $pakanGram,  // ← konversi ke gram
-            'jadwal' => $jadwal,
-            'sumber' => $sumber,
-            'status' => 'success',
-            'tanggal' => now()->toDateString(),
-            'waktu_pemberian' => now()->toTimeString(),
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim"
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Send feed command error: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
-        ], 500);
-    }
-}
         
         private function getCurrentSchedule()
         {
@@ -533,12 +887,18 @@ private function addToBuffer($data)
             return 'sore';
         }
         
+        /**
+         * Get data pakan mingguan untuk chart
+         */
         public function getWeeklyFeedData()
         {
             try {
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                
                 $feedData = DB::table('feeding_records')
-                    ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(pakan_gram) as total_gram'))
-                    ->where('created_at', '>=', now()->subDays(7))
+                    ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(target_gram) as total_gram'))
+                    ->whereBetween('created_at', [$startDate, $endDate])
                     ->groupBy('date')
                     ->orderBy('date', 'asc')
                     ->get();
@@ -594,12 +954,6 @@ private function addToBuffer($data)
                     $request->current_value
                 );
                 
-                Log::info('pH Calibrated', [
-                    'desired' => $request->desired_value,
-                    'current' => $request->current_value,
-                    'offset' => $calibration->ph_offset
-                ]);
-                
                 Cache::forget('sensor_realtime_display');
                 Cache::forget('sensor_rule');
                 
@@ -630,12 +984,6 @@ private function addToBuffer($data)
                     $request->desired_value, 
                     $request->current_value
                 );
-                
-                Log::info('Turbidity Calibrated', [
-                    'desired' => $request->desired_value,
-                    'current' => $request->current_value,
-                    'offset' => $calibration->turbidity_offset
-                ]);
                 
                 Cache::forget('sensor_realtime_display');
                 Cache::forget('sensor_rule');
@@ -700,5 +1048,104 @@ private function addToBuffer($data)
                 'current_ph' => $sensor->ph ?? 7.0,
                 'current_turbidity' => $sensor->turbidity ?? 30
             ]);
+        }
+        
+        // ==================== API PRODUCTION VARIABLES ====================
+        
+        public function getProductionVariables()
+        {
+            try {
+                $profile = TambakProfile::first();
+                $sensor = DB::table('sensor_realtime')->first();
+                $rule = $this->getRuleFromCache();
+                $pengaturan = DB::table('pengaturan_tambak')->first();
+                
+                if (!$profile) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data profil tambak tidak ditemukan'
+                    ], 404);
+                }
+                
+                $weatherService = new WeatherService();
+                $weatherData = $weatherService->getWeather();
+                
+                $rekomendasi = $this->hitungRekomendasiPakanTerintegrasi(
+                    $sensor->ph ?? 7, 
+                    $sensor->turbidity ?? 30, 
+                    $profile, 
+                    $weatherData
+                );
+                
+                $totalPakanHarianGram = DB::table('feeding_records')
+                    ->whereDate('created_at', Carbon::today())
+                    ->sum('target_gram');
+                
+                $fcr = 0;
+                $biomassaKg = $profile->biomassa_kg;
+                if ($biomassaKg > 0 && $totalPakanHarianGram > 0) {
+                    $fcr = round(($totalPakanHarianGram / 1000) / $biomassaKg, 2);
+                }
+                
+                $jadwalPakan = [];
+                if ($pengaturan && $pengaturan->waktu) {
+                    $jadwalPakan = json_decode($pengaturan->waktu, true);
+                    if (!is_array($jadwalPakan)) {
+                        $jadwalPakan = [];
+                    }
+                }
+                
+                $calibratedPh = SensorCalibration::getCalibratedValue($sensor->ph ?? 7, 'ph');
+                $calibratedTurbidity = SensorCalibration::getCalibratedValue($sensor->turbidity ?? 30, 'turbidity');
+                
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'populasi_awal' => (int)($profile->populasi_awal ?? $profile->populasi ?? 0),
+                        'populasi_saat_ini' => (int)($profile->populasi ?? 0),
+                        'survival_rate' => $profile->survival_rate,
+                        'avg_weight' => (float)($profile->avg_weight ?? 0),
+                        'biomassa_kg' => $profile->biomassa_kg,
+                        'umur_hari' => $profile->umur_hari,
+                        'umur_minggu' => $profile->umur_minggu,
+                        'target_panen_kg' => (float)($profile->target_panen_kg ?? 0),
+                        'target_size_gram' => (float)($profile->target_size_gram ?? 0),
+                        'daily_growth_rate' => $profile->daily_growth_rate,
+                        'fcr' => $fcr,
+                        'prediksi_panen_hari' => $profile->prediksi_panen_hari,
+                        
+                        'ph' => (float)$calibratedPh,
+                        'ph_status' => $this->getPhStatus($calibratedPh, $rule),
+                        'turbidity' => (float)$calibratedTurbidity,
+                        'turbidity_status' => $this->getTurbidityStatus($calibratedTurbidity, $rule),
+                        
+                        'rekomendasi_pakan_kg' => $rekomendasi['rekomendasi_kg'] ?? 0,
+                        'rekomendasi_pakan_gram' => $rekomendasi['rekomendasi_gram'] ?? 0,
+                        'pakan_dasar_kg' => $rekomendasi['pakan_dasar_kg'] ?? 0,
+                        'faktor_air' => $rekomendasi['faktor_air'] ?? 1,
+                        'faktor_cuaca' => $rekomendasi['faktor_cuaca'] ?? 1,
+                        'status_air' => $rekomendasi['status_air'] ?? 'aman',
+                        'status_cuaca' => $rekomendasi['status_cuaca'] ?? 'cerah',
+                        
+                        'total_pakan_harian_gram' => (int)$totalPakanHarianGram,
+                        'total_pakan_harian_kg' => round($totalPakanHarianGram / 1000, 2),
+                        'frekuensi_pemberian' => count($jadwalPakan),
+                        'jadwal_pakan' => $jadwalPakan,
+                        
+                        'cuaca' => $weatherData['cuaca'],
+                        'intensitas_hujan' => $weatherData['intensitas_hujan'],
+                        'suhu_lingkungan' => $weatherData['suhu'],
+                        'kelembaban' => $weatherData['kelembaban'],
+                        'last_update' => now()->toDateTimeString()
+                    ]
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Get production variables error: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ], 500);
+            }
         }
     }

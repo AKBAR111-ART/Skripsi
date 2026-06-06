@@ -17,8 +17,75 @@ use App\Http\Controllers\PengingatJadwalController;
 | WEB ROUTES (TAMBAK UDANG)
 |--------------------------------------------------------------------------
 */
+Route::get('/sensor/history', [SensorController::class, 'history']);
+
+// Route untuk rekomendasi pakan (GET)
+Route::get('/api/feeding/recommendation', [PengaturanController::class, 'getFeedingRecommendation']);
+Route::get('/test-weather', function () {
+    $apiKey = env('OPENWEATHER_API_KEY');
+    
+    if (!$apiKey) {
+        return response()->json([
+            'success' => false,
+            'message' => 'OPENWEATHER_API_KEY belum diset di .env'
+        ]);
+    }
+    
+    $city = 'Jakarta';
+    
+    try {
+        $response = Http::get("https://api.openweathermap.org/data/2.5/weather", [
+            'q' => $city,
+            'appid' => $apiKey,
+            'units' => 'metric'
+        ]);
+        
+        if ($response->successful()) {
+            $data = $response->json();
+            
+            // Mapping ke format yang sesuai
+            $weatherMain = $data['weather'][0]['main'] ?? 'Clear';
+            $cuaca = match($weatherMain) {
+                'Clear' => 'Cerah',
+                'Clouds' => 'Berawan',
+                'Rain', 'Drizzle' => 'Hujan',
+                default => $weatherMain
+            };
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'cuaca' => $cuaca,
+                    'suhu' => $data['main']['temp'],
+                    'kelembaban' => $data['main']['humidity'],
+                    'intensitas_hujan' => $data['rain']['1h'] ?? 0,
+                    'keterangan' => $data['weather'][0]['description']
+                ]
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal mengambil data cuaca',
+            'error' => $response->body()
+        ], $response->status());
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+});
+Route::post('/sensor/clear-cache', [SensorController::class, 'clearRuleCache']);
+
+// Route untuk realtime sensor di card monitoring
+Route::get('/api/pengaturan/realtime-sensor', [PengaturanController::class, 'getRealtimeSensor']);
+// Routes untuk jadwal pengingat
+Route::get('/api/jadwal-list', [PengaturanController::class, 'getJadwalList']);
+Route::post('/api/jadwal-store', [PengaturanController::class, 'storeJadwal']);
+Route::delete('/api/jadwal-delete/{id}', [PengaturanController::class, 'deleteJadwal']);
 Route::get('/api/profile/latest', [ProfileController::class, 'getLatestProfile']);
-Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
 // Route untuk history
 Route::get('/history/week-data/{week}', [HistoryController::class, 'getWeekData']);
 Route::get('/history/day-detail/{date}', [HistoryController::class, 'getDayDetail']);
@@ -132,9 +199,10 @@ Route::get('/realtime-data', [SensorController::class, 'realtime'])->name('realt
 // ========== API UMUM ==========
 Route::prefix('api')->group(function () {
     // Jadwal Pengingat
-    Route::get('/jadwal-list', [PengingatJadwalController::class, 'getJadwal']);
-    Route::post('/jadwal-store', [PengingatJadwalController::class, 'store']);
-    Route::delete('/jadwal-delete/{id}', [PengingatJadwalController::class, 'destroy']);
+       Route::get('/jadwal-list', [App\Http\Controllers\PengaturanController::class, 'getJadwalList']);
+    Route::post('/jadwal-store', [App\Http\Controllers\PengaturanController::class, 'storeJadwal']);
+    Route::delete('/jadwal-delete/{id}', [App\Http\Controllers\PengaturanController::class, 'deleteJadwal']);
+    
     
     // Realtime data
     Route::get('/realtime', [HomeController::class, 'getRealtimeData'])->name('api.realtime');
@@ -156,10 +224,7 @@ Route::prefix('api')->group(function () {
     Route::get('/feeding/all', [FeedingHistoryController::class, 'all']);
     Route::post('/feeding/manual', [FeedingHistoryController::class, 'manualFeed']);
     
-    // Jadwal Pengingat (duplikat? biarkan saja tidak masalah)
-    Route::get('/jadwal-list', [PengingatJadwalController::class, 'getJadwal']);
-    Route::post('/jadwal-store', [PengingatJadwalController::class, 'store']);
-    Route::delete('/jadwal-delete/{id}', [PengingatJadwalController::class, 'destroy']);
+
 });
 
 // ========== TESTING ==========

@@ -13,7 +13,14 @@ use App\Http\Controllers\HomeController;
 | API Routes (IoT Tambak Udang)
 |--------------------------------------------------------------------------
 */
-
+Route::get('/jadwal-list', [PengaturanController::class, 'getJadwalList']);
+Route::post('/jadwal-store', [PengaturanController::class, 'storeJadwal']);
+Route::delete('/jadwal-delete/{id}', [PengaturanController::class, 'deleteJadwal']);
+// routes/api.php
+Route::post('/cuaca/update', [PengaturanController::class, 'updateCuaca']);
+Route::get('/cuaca/now', [PengaturanController::class, 'getCuacaFromApi']);
+// routes/api.php
+Route::get('/production-variables', [SensorController::class, 'getProductionVariables']);
 // Sensor endpoints
 Route::get('/sensor/realtime', [SensorController::class, 'realtime']);
 Route::get('/sensor/getFeedingRecommendation', [SensorController::class, 'getFeedingRecommendation']);

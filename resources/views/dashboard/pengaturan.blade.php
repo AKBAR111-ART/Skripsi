@@ -86,75 +86,150 @@ $rule = $rule ?? [
         
     </div>
     
-    <!-- OUTPUT CARD -->
+    <!-- OUTPUT CARD: PENGINGAT WHATSAPP & MONITORING TAMBAK -->
     <div class="output-card-premium">
         
+        <!-- CARD PENGINGAT WHATSAPP -->
         <div class="output-left-premium">
-            <div class="card-title"><i class="fas fa-bell"></i><h2>⚡ Pengingat Anda</h2></div>
-            
-            <div class="form-group-premium">
-                <label>👨‍🌾 Nama Penjaga</label>
-                <div id="penjagaContainer"></div>
-                <button type="button" id="addPenjaga" class="btn-add-premium">+ Tambah Penjaga</button>
+            <div class="card-title">
+                <i class="fas fa-bell"></i>
+                <h2>⚡ Pengingat WhatsApp</h2>
             </div>
             
+            <!-- TANGGAL MULAI -->
             <div class="form-group-premium">
-                <label>📱 Nomor WhatsApp</label>
-                <div id="waContainer"></div>
-                <button type="button" id="addWa" class="btn-add-premium">+ Tambah Nomor WA</button>
-            </div>
-            
-            <div class="form-group-premium">
-                <label>⏰ Waktu Pakan</label>
-                <div id="waktuContainer"></div>
-                <button type="button" id="addWaktu" class="btn-add-premium">+ Tambah Waktu</button>
-            </div>
-            
-            <div class="form-group-premium">
-                <label>📅 Tanggal</label>
+                <label><i class="fas fa-calendar-alt"></i> 📅 Tanggal Mulai Pengingat</label>
                 <input type="date" id="tanggalInput" class="form-control-premium" value="{{ $pengaturan->tanggal ?? '' }}">
+                <small class="form-help">Pengingat akan mulai aktif pada tanggal ini</small>
             </div>
             
-            {{-- <div class="form-group-premium" style="margin-top: 20px;">
-                <label>⏰ Jadwal Pengingat WhatsApp</label>
-                <div id="jadwalContainer"></div>
-                <div class="row" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-                    <input type="time" id="newJam" class="form-control-premium" placeholder="Jam" style="flex:1; min-width: 120px;">
-                    <input type="text" id="newPesan" class="form-control-premium" placeholder="Pesan pengingat" style="flex:2; min-width: 200px;">
-                    <input type="text" id="newTargetNomor" class="form-control-premium" placeholder="Nomor WA (pisah dengan koma)" style="flex:2; min-width: 200px;">
-                    <button type="button" id="addJadwal" class="btn-add-premium" style="flex:0;">+ Tambah</button>
+            <!-- JADWAL PENGINGAT WHATSAPP -->
+            <div class="form-group-premium">
+                <label><i class="fab fa-whatsapp"></i> ⏰ Jadwal Pengingat WhatsApp</label>
+                
+                <div id="jadwalContainer" class="jadwal-container">
+                    @if(isset($jadwalList) && count($jadwalList) > 0)
+                        @foreach($jadwalList as $jadwal)
+                        <div class="jadwal-item" data-id="{{ $jadwal->id }}">
+                            <div class="jadwal-info">
+                                <span class="jadwal-time"><i class="far fa-clock"></i> {{ $jadwal->jam }}</span>
+                                <span class="jadwal-message"><i class="fas fa-comment-dots"></i> {{ $jadwal->pesan }}</span>
+                                <span class="jadwal-target"><i class="fab fa-whatsapp"></i> 
+                                    @if(is_array($jadwal->target_nomor))
+                                        {{ implode(', ', $jadwal->target_nomor) }}
+                                    @else
+                                        {{ $jadwal->target_nomor }}
+                                    @endif
+                                </span>
+                                <span class="jadwal-status {{ $jadwal->is_sent ? 'sent' : 'pending' }}">
+                                    {{ $jadwal->is_sent ? '✅ Terkirim' : '⏳ Pending' }}
+                                </span>
+                            </div>
+                            <button class="jadwal-delete" onclick="deleteJadwal({{ $jadwal->id }})">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        @endforeach
+                    @else
+                        <div class="jadwal-empty">
+                            <i class="fas fa-bell-slash"></i> Belum ada jadwal. Tambahkan di bawah.
+                        </div>
+                    @endif
                 </div>
-                <small style="color: #6b7280;">Format nomor: 628123456789 (pisahkan dengan koma jika lebih dari satu)</small>
-            </div> --}}
+                
+                <!-- FORM TAMBAH JADWAL -->
+                <div class="jadwal-add-form">
+                    <div class="jadwal-input-group">
+                        <input type="time" id="newJam" class="form-control-premium" placeholder="Jam (contoh: 08:00)">
+                        <input type="text" id="newPesan" class="form-control-premium" placeholder="Pesan pengingat">
+                        <input type="text" id="newTargetNomor" class="form-control-premium" placeholder="Nomor WA (contoh: 628123456789)">
+                        <button type="button" id="addJadwal" class="btn-add-premium">
+                            <i class="fas fa-plus"></i> Tambah
+                        </button>
+                    </div>
+                    <small class="form-help">
+                        <i class="fas fa-info-circle"></i> 
+                        Setiap jadwal akan mengirim WA otomatis ke nomor yang ditentukan. 
+                        Format nomor: 628123456789 (awali 62, tanpa 0). Pisahkan dengan koma untuk multiple nomor.
+                    </small>
+                </div>
+            </div>
+            
+            <!-- TEMPLATE PESAN DEFAULT -->
+            <div class="form-group-premium">
+                <label><i class="fas fa-edit"></i> 💬 Template Pesan Default</label>
+                <textarea id="templatePesan" class="form-control-premium" rows="2" placeholder="Contoh: Waktunya memberi pakan untuk udang">{{ $pengaturan->template_pesan ?? 'Waktunya memberi pakan untuk udang' }}</textarea>
+                <small class="form-help">
+                    <i class="fas fa-code"></i> Gunakan <code>@{{waktu}}</code> untuk menampilkan jam
+                </small>
+            </div>
         </div>
         
+        <!-- CARD MONITORING TAMBAK -->
         <div class="output-right-premium">
-            <div class="card-title"><i class="fas fa-chart-line"></i><h2>📊 Monitoring Tambak</h2></div>
-            
-            <div class="form-group-premium">
-                <label>💬 Template Pesan WhatsApp</label>
-                <textarea id="templatePesan" class="form-control-premium" rows="4">{{ $pengaturan->template_pesan ?? '' }}</textarea>
-                <small style="color:#6b7280;">Gunakan: @{{penjaga}} @{{waktu}} @{{tanggal}}</small>
+            <div class="card-title">
+                <i class="fas fa-chart-line"></i>
+                <h2>📊 Monitoring Tambak</h2>
             </div>
             
-            <div class="premium-result-box">
-                <h1 id="beratHighlight">0 kg</h1>
-                <p>Rekomendasi Pakan</p>
+            <!-- PREVIEW PENGINGAT -->
+            <div class="preview-card">
+                <div class="preview-header">
+                    <i class="fas fa-eye"></i>
+                    <span>Preview Pengingat</span>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-item">
+                        <span class="preview-label">📅 Tanggal Mulai:</span>
+                        <span class="preview-value" id="tanggalNow">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">⏰ Total Jadwal:</span>
+                        <span class="preview-value" id="totalJadwalNow">0</span>
+                    </div>
+                </div>
             </div>
             
-            <div class="info-preview">
-                <p><b>Penjaga:</b> <span id="penjagaNow">{{ is_array($pengaturan->penjaga ?? null) ? implode(', ', $pengaturan->penjaga) : (is_string($pengaturan->penjaga ?? null) ? implode(', ', json_decode($pengaturan->penjaga, true) ?? []) : '-') }}</span></p>
-                <p><b>WA:</b> <span id="waNow">{{ is_array($pengaturan->nomor_wa ?? null) ? implode(', ', $pengaturan->nomor_wa) : (is_string($pengaturan->nomor_wa ?? null) ? implode(', ', json_decode($pengaturan->nomor_wa, true) ?? []) : '-') }}</span></p>
-                <p><b>Waktu:</b> <span id="waktuNow">{{ is_array($pengaturan->waktu ?? null) ? implode(', ', $pengaturan->waktu) : (is_string($pengaturan->waktu ?? null) ? implode(', ', json_decode($pengaturan->waktu, true) ?? []) : '-') }}</span></p>
-                <p><b>Tanggal:</b> <span id="tanggalNow">{{ $pengaturan->tanggal ?? '-' }}</span></p>
+            <!-- REKOMENDASI PAKAN -->
+            <div class="recommendation-card">
+                <div class="recommendation-icon">
+                    <i class="fas fa-fish"></i>
+                </div>
+                <div class="recommendation-content">
+                    <div class="recommendation-label">Rekomendasi Pakan</div>
+                    <div class="recommendation-value" id="beratHighlight">
+                        <span class="value-number">0</span>
+                        <span class="value-unit">kg</span>
+                    </div>
+                    <div class="recommendation-status" id="recommendationStatus">
+                        <i class="fas fa-circle"></i> Berdasarkan kondisi air terkini
+                    </div>
+                </div>
+            </div>
+            
+            <!-- STATUS SENSOR TERKINI -->
+            <div class="sensor-status-card">
+                <div class="sensor-status-header">
+                    <i class="fas fa-microchip"></i>
+                    <span>Status Sensor Terkini</span>
+                    <span class="live-badge">LIVE</span>
+                </div>
+                <div id="statusBox" class="sensor-status-content">
+                    <div class="sensor-status-loading">Memuat data sensor...</div>
+                </div>
             </div>
         </div>
         
     </div>
     
+    <!-- TOMBOL AKSI -->
     <div class="settings-actions">
-        <button class="btn-reset-premium" id="btnReset">Reset</button>
-        <button class="btn-save-premium" id="btnSimpan">💾 Simpan Pengaturan</button>
+        <button class="btn-reset-premium" id="btnReset">
+            <i class="fas fa-undo-alt"></i> Reset
+        </button>
+        <button class="btn-save-premium" id="btnSimpan">
+            <i class="fas fa-save"></i> Simpan Pengaturan
+        </button>
     </div>
     
 </div>
