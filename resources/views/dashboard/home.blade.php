@@ -4,10 +4,50 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/home.css') }}">
+<style>
+    /* Memastikan teks di card cuaca berwarna hitam */
+    .stat-card .stat-info h3,
+    .stat-card .stat-info p,
+    .stat-card .stat-info small {
+        color: #000000 !important;
+    }
+    
+    /* Alert box teks hitam */
+    .alert-premium {
+        color: #000000 !important;
+    }
+    
+    /* Welcome header teks tetap putih */
+    .welcome-header h2, 
+    .welcome-header p {
+        color: white !important;
+    }
+    
+    /* Card lainnya tetap */
+    .feeding-card, .info-list li span, .info-list li strong {
+        color: #000000;
+    }
+    
+    /* Gauge label */
+    .gauge-label {
+        color: #000000 !important;
+    }
+</style>
 @endpush
 
 @section('content')
 <div class="dashboard-container">
+    
+    <!-- WELCOME HEADER dengan data dari Profile Tambak -->
+    <div class="welcome-header" style="margin-bottom: 20px; background: rgba(255,255,255,0.15); padding: 15px 20px; border-radius: 16px; backdrop-filter: blur(8px);">
+        <h2 style="font-size: 24px; font-weight: 600; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); margin: 0;">
+            Selamat Datang, {{ session('user_name') ?? 'Petambak' }}! 👋
+        </h2>
+        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0;">
+            <i class="fas fa-fish"></i> {{ $profileData['nama_tambak'] ?? session('tambak_name') ?? 'Tambak Berkah' }} • 
+            <i class="fas fa-map-marker-alt"></i> {{ $profileData['lokasi'] ?? session('lokasi_tambak') ?? 'Desa Nambakor, Sumenep' }}
+        </p>
+    </div>
     
     <!-- STATS GRID - 3 CARD (PAKAN, KONDISI AIR, POPULASI) -->
     <div class="stats-grid">
@@ -44,15 +84,45 @@
         <div class="stat-card">
             <div class="stat-icon">🌤️</div>
             <div class="stat-info">
-                <h3 id="cuacaText">Memuat...</h3>
-                <p id="suhuText">Suhu: --°C</p>
+                <h3 id="cuacaText">
+                    @if(isset($weather) && $weather['success'])
+                        {{ $weather['cuaca'] }}
+                    @else
+                        Memuat...
+                    @endif
+                </h3>
+                <p id="suhuText">
+                    @if(isset($weather) && $weather['success'])
+                        Suhu: {{ $weather['suhu'] }}°C
+                    @else
+                        Suhu: --°C
+                    @endif
+                </p>
+                <small style="font-size: 10px;" id="lokasiText">
+                    @if(isset($weather) && $weather['success'])
+                        📍 {{ $weather['location'] ?? 'Nambakor, Sumenep' }}
+                    @endif
+                </small>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">☔</div>
             <div class="stat-info">
-                <h3 id="hujanText">0 <span>mm</span></h3>
+                <h3 id="hujanText">
+                    @if(isset($weather) && $weather['success'])
+                        {{ $weather['intensitas_hujan'] }} <span>mm</span>
+                    @else
+                        0 <span>mm</span>
+                    @endif
+                </h3>
                 <p>Intensitas Hujan</p>
+                <small style="font-size: 10px;" id="hujanKeterangan">
+                    @if(isset($weather) && $weather['success'] && $weather['intensitas_hujan'] > 0)
+                        🌧️ Hujan dalam 1 jam terakhir
+                    @elseif(isset($weather) && $weather['success'])
+                        ☀️ Tidak ada hujan
+                    @endif
+                </small>
             </div>
         </div>
         <div class="stat-card">
@@ -66,7 +136,13 @@
     <!-- ============================================================= -->
 
     <!-- ALERT BOX -->
-    <div id="alertBox" class="alert-premium normal">✅ Memuat data sensor...</div>
+    <div id="alertBox" class="alert-premium normal">
+        @if(isset($weather) && $weather['success'] && isset($weather['feed_recommendation']))
+            {!! $weather['feed_recommendation']['message'] !!}
+        @else
+            ✅ Memuat data sensor...
+        @endif
+    </div>
 
     <!-- CONTENT GRID - 2 CARD (GAUGE + FEED) -->
     <div class="content-grid-two">
@@ -113,7 +189,21 @@
                 <li><span>Frekuensi</span><strong>3x sehari</strong></li>
                 <li><span>Waktu</span><strong>Pagi | Siang | Sore</strong></li>
                 <li><span>Berdasarkan</span><strong>Kondisi air & biomassa</strong></li>
-                <li><span>Cuaca Saat Ini</span><strong id="cuacaFeedInfo">Memuat...</strong></li>
+                <li><span>Cuaca Saat Ini</span>
+                    <strong id="cuacaFeedInfo">
+                        @if(isset($weather) && $weather['success'])
+                            {{ $weather['cuaca'] }}
+                        @else
+                            Memuat...
+                        @endif
+                    </strong>
+                </li>
+                @if(isset($weather) && $weather['success'] && isset($weather['feed_recommendation']))
+                <li style="color: {{ $weather['feed_recommendation']['status'] === 'warning' ? '#f59e0b' : ($weather['feed_recommendation']['status'] === 'success' ? '#10b981' : '#000000') }}">
+                    <span>Rekomendasi Cuaca</span>
+                    <strong>{{ $weather['feed_recommendation']['message'] }}</strong>
+                </li>
+                @endif
             </ul>
             <div class="feed-box">
                 <div class="feed-label">ESTIMASI PAKAN</div>
@@ -184,7 +274,19 @@
 <script>
     window.ruleSensor = @json($rule ?? null);
     
+    // Data cuaca dari server (Sumenep - Nambakor)
+    window.weatherData = @json($weather ?? null);
+    
+    // Data user dari session untuk JavaScript
+    window.userData = {
+        id: {{ session('user_id') }},
+        name: "{{ session('user_name') }}",
+        tambakName: "{{ $profileData['nama_tambak'] ?? session('tambak_name') ?? 'Tambak Berkah' }}",
+        lokasi: "{{ $profileData['lokasi'] ?? session('lokasi_tambak') ?? 'Desa Nambakor, Sumenep' }}"
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
+        // Tampilkan rule engine
         if (window.ruleSensor) {
             document.getElementById('ruleDetail').innerHTML = `
                 <strong>📐 Detail Rule:</strong><br>
@@ -197,9 +299,42 @@
             `;
         }
         
+        // Tampilkan data cuaca awal dari server
+        if (window.weatherData && window.weatherData.success) {
+            // Update tampilan cuaca
+            if (document.getElementById('cuacaText')) {
+                document.getElementById('cuacaText').innerHTML = window.weatherData.cuaca;
+            }
+            if (document.getElementById('suhuText')) {
+                document.getElementById('suhuText').innerHTML = `Suhu: ${window.weatherData.suhu}°C`;
+            }
+            if (document.getElementById('hujanText')) {
+                const hujan = window.weatherData.intensitas_hujan || 0;
+                document.getElementById('hujanText').innerHTML = `${hujan} <span>mm</span>`;
+            }
+            if (document.getElementById('cuacaFeedInfo')) {
+                document.getElementById('cuacaFeedInfo').innerHTML = window.weatherData.cuaca;
+            }
+            
+            // Update alert berdasarkan cuaca
+            if (window.weatherData.feed_recommendation) {
+                const alertBox = document.getElementById('alertBox');
+                const rec = window.weatherData.feed_recommendation;
+                
+                if (rec.status === 'warning') {
+                    alertBox.className = 'alert-premium warning';
+                    alertBox.innerHTML = `⚠️ ${rec.message}`;
+                } else if (rec.status === 'success') {
+                    alertBox.className = 'alert-premium success';
+                    alertBox.innerHTML = `✅ ${rec.message}`;
+                }
+            }
+        }
+        
+        // Inisialisasi semua fungsi
         if (typeof initAllCharts === 'function') setTimeout(initAllCharts, 100);
         if (typeof loadRealtime === 'function') { loadRealtime(); setInterval(loadRealtime, 3000); }
-        if (typeof loadCuaca === 'function') { loadCuaca(); setInterval(loadCuaca, 30000); }
+        if (typeof loadCuaca === 'function') { loadCuaca(); setInterval(loadCuaca, 1800000); }
         if (typeof loadProductionData === 'function') { loadProductionData(); setInterval(loadProductionData, 30000); }
     });
 </script>

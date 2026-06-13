@@ -89,7 +89,7 @@
         </div>
         <div class="header-right">
             <div class="profile-trigger" onclick="toggleProfilePanel()">
-                <img src="<?php echo e(asset('images/default-avatar.png')); ?>" alt="Avatar">
+                <img src="<?php echo e(asset('images/profile.jpg')); ?>" alt="Avatar">
             </div>
         </div>
     </div>
@@ -104,10 +104,10 @@
 
     <!-- FOOTBAR -->
     <nav class="app-footbar">
-        <a href="<?php echo e(route('home')); ?>" class="<?php echo e(request()->routeIs('home') ? 'active' : ''); ?>">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
+       <a href="<?php echo e(route('dashboard')); ?>" class="<?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+</a>
         <a href="<?php echo e(route('monitoring')); ?>" class="<?php echo e(request()->routeIs('monitoring') ? 'active' : ''); ?>">
             <i class="fas fa-chart-line"></i>
             <span>Monitoring</span>

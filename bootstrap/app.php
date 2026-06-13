@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
 ->withMiddleware(function (Middleware $middleware) {
     $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
 })
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
+    ]);
+})
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })

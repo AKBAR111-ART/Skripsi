@@ -1,3 +1,4 @@
+{{-- resources/views/dashboard/profile.blade.php --}}
 @extends('footbar.utama')
 
 @section('title', 'Profil Tambak')
@@ -30,15 +31,13 @@
     $pakanPerHariGram = $populasi * $pakanPerEkor;
     $pakanPerHariKg = round($pakanPerHariGram / 1000, 2);
     
-    // 🔥 PAKAN HARI INI (dari database feeding_records) - dalam KG
     use App\Models\FeedingRecord;
     $pakanHariIniKg = FeedingRecord::whereDate('created_at', today())->sum('pakan_kg');
-    $pakanHariIniGram = FeedingRecord::whereDate('created_at', today())->sum('target_gram');
 @endphp
 
 <div class="profile-container">
 
-    <!-- HERO SECTION (Tanpa Button Edit) -->
+    <!-- HERO SECTION -->
     <div class="profile-hero">
         <div class="hero-overlay"></div>
         <div class="hero-content">
@@ -52,7 +51,7 @@
         </div>
     </div>
 
-    <!-- STATS CARD (4 Card) -->
+    <!-- STATS CARD -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon">🦐</div>
@@ -75,7 +74,6 @@
                 <p>Biomassa Total</p>
             </div>
         </div>
-        <!-- 🔥 CARD PAKAN PER HARI (dalam KG, sinkron dengan Home) -->
         <div class="stat-card">
             <div class="stat-icon">🍽️</div>
             <div class="stat-info">
@@ -85,10 +83,10 @@
         </div>
     </div>
 
-    <!-- CONTENT GRID - 2 KOLOM (Informasi Tambak + Foto Tambak) -->
+    <!-- CONTENT GRID - 2 KOLOM -->
     <div class="content-grid-two">
         
-        <!-- KIRI: Informasi Tambak (DENGAN TOMBOL EDIT DI BAWAH) -->
+        <!-- KIRI: Informasi Tambak -->
         <div class="info-card-elegant">
             <div class="card-header-elegant">
                 <div class="header-icon">
@@ -136,7 +134,6 @@
                     <div class="info-value">{{ $profile->tanggal_dibuat ?? '-' }}</div>
                 </div>
             </div>
-            <!-- 🔥 TOMBOL EDIT DI BAWAH CARD -->
             <div class="card-footer-elegant">
                 <button class="edit-btn-full" onclick="openEditModal()">
                     <i class="fas fa-pen"></i> Edit Profil Tambak
@@ -144,7 +141,7 @@
             </div>
         </div>
 
-        <!-- KANAN: Foto Tambak (ELEGAN) -->
+        <!-- KANAN: Foto Tambak -->
         <div class="photo-card-elegant">
             <div class="card-header-elegant">
                 <div class="header-icon">
@@ -167,91 +164,97 @@
 
     </div>
 
-   <!-- BOTTOM GRID: Kualitas Air & Budidaya -->
-<div class="bottom-grid">
+    <!-- BOTTOM GRID -->
+    <div class="bottom-grid">
 
-    <!-- KUALITAS AIR CARD -->
-    <div class="quality-card">
-        <div class="card-header">
-            <span class="card-icon">💧</span>
-            <h3>Kualitas Air</h3>
-            <span class="live-badge">LIVE</span>
-        </div>
-        <div class="quality-items">
-            <div class="quality-item">
-                <div class="quality-icon">💧</div>
-                <div class="quality-info">
-                    <span class="quality-label">pH Air</span>
-                    <span class="quality-value" id="qualityPh">7.82</span>
-                    <span class="quality-status" id="qualityPhStatus">Normal</span>
+        <!-- KUALITAS AIR CARD -->
+        <div class="quality-card">
+            <div class="card-header">
+                <span class="card-icon">💧</span>
+                <h3>Kualitas Air</h3>
+                <span class="live-badge">LIVE</span>
+            </div>
+            <div class="quality-items">
+                <div class="quality-item">
+                    <div class="quality-icon">💧</div>
+                    <div class="quality-info">
+                        <span class="quality-label">pH Air</span>
+                        <span class="quality-value" id="qualityPh">--</span>
+                        <span class="quality-status" id="qualityPhStatus">--</span>
+                        <small class="calibration-info" id="phCalibInfo"></small>
+                    </div>
+                </div>
+                <div class="quality-item">
+                    <div class="quality-icon">⚪</div>
+                    <div class="quality-info">
+                        <span class="quality-label">Turbidity</span>
+                        <span class="quality-value" id="qualityTurb">--</span>
+                        <span class="quality-status" id="qualityTurbStatus">--</span>
+                        <small class="calibration-info" id="turbCalibInfo"></small>
+                    </div>
                 </div>
             </div>
-            <div class="quality-item">
-                <div class="quality-icon">⚪</div>
-                <div class="quality-info">
-                    <span class="quality-label">Turbidity</span>
-                    <span class="quality-value" id="qualityTurb">35 NTU</span>
-                    <span class="quality-status" id="qualityTurbStatus">Normal</span>
-                </div>
+            
+            <div class="param-buttons">
+                <button onclick="openKalibrasiModal()" class="param-btn">
+                    <i class="fas fa-microscope"></i> Kalibrasi pH & Turbidity
+                </button>
+                <button onclick="resetAllCalibrationConfirm()" class="param-btn reset-btn">
+                    <i class="fas fa-sync-alt"></i> Reset Kalibrasi
+                </button>
             </div>
+            
+            <div id="calibrationStatus" class="calibration-status"></div>
         </div>
-      <div class="param-buttons">
-    <button onclick="kalibrasiPH()" class="param-btn">
-        <i class="fas fa-microscope"></i> Kalibrasi pH
-    </button>
-    <button onclick="kalibrasiTurbidity()" class="param-btn">
-        <i class="fas fa-microscope"></i> Kalibrasi Turbidity
-    </button>
-</div>
+
+        <!-- MASA BUDIDAYA CARD -->
+        <div class="budidaya-card">
+            <div class="card-header">
+                <span class="card-icon">📅</span>
+                <h3>Masa Budidaya</h3>
+            </div>
+            @if(!$profile || !$start)
+                <button class="start-btn" onclick="openBudidayaModal()">
+                    <i class="fas fa-play"></i> Mulai Budidaya
+                </button>
+            @else
+                <div class="budidaya-content">
+                    <div class="budidaya-info">
+                        <div class="budidaya-age">
+                            <span class="age-number">{{ $days }}</span>
+                            <span class="age-label">Hari</span>
+                        </div>
+                        <div class="budidaya-detail">
+                            <p>📊 Umur: <strong>{{ $umurMinggu }} Minggu</strong></p>
+                            <p>📅 Mulai: <strong>{{ $profile->tanggal_mulai_budidaya }}</strong></p>
+                            <p>🎯 Panen: <strong>{{ $estimasiPanen }}</strong></p>
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>📈 Progress Budidaya</span>
+                            <span>{{ round($percent) }}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ $percent }}%"></div>
+                        </div>
+                    </div>
+                    <div class="budidaya-actions">
+                        <button class="edit-small-btn" onclick="openBudidayaModal()">
+                            <i class="fas fa-pen"></i> Edit Tanggal
+                        </button>
+                        <button class="reset-small-btn" onclick="resetBudidaya()">
+                            <i class="fas fa-sync-alt"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            @endif
+        </div>
+
     </div>
-
-    <!-- MASA BUDIDAYA CARD -->
-    <div class="budidaya-card">
-        <div class="card-header">
-            <span class="card-icon">📅</span>
-            <h3>Masa Budidaya</h3>
-        </div>
-        @if(!$profile || !$start)
-            <button class="start-btn" onclick="openBudidayaModal()">
-                <i class="fas fa-play"></i> Mulai Budidaya
-            </button>
-        @else
-            <div class="budidaya-content">
-                <div class="budidaya-info">
-                    <div class="budidaya-age">
-                        <span class="age-number">{{ $days }}</span>
-                        <span class="age-label">Hari</span>
-                    </div>
-                    <div class="budidaya-detail">
-                        <p>📊 Umur: <strong>{{ $umurMinggu }} Minggu</strong></p>
-                        <p>📅 Mulai: <strong>{{ $profile->tanggal_mulai_budidaya }}</strong></p>
-                        <p>🎯 Panen: <strong>{{ $estimasiPanen }}</strong></p>
-                    </div>
-                </div>
-                <div class="progress-container">
-                    <div class="progress-label">
-                        <span>📈 Progress Budidaya</span>
-                        <span>{{ round($percent) }}%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {{ $percent }}%"></div>
-                    </div>
-                </div>
-                <div class="budidaya-actions">
-                    <button class="edit-small-btn" onclick="openBudidayaModal()">
-                        <i class="fas fa-pen"></i> Edit Tanggal
-                    </button>
-                    <button class="reset-small-btn" onclick="resetBudidaya()">
-                        <i class="fas fa-sync-alt"></i> Reset
-                    </button>
-                </div>
-            </div>
-        @endif
-    </div>
-
 </div>
 
-<!-- MODAL EDIT PROFILE -->
+<!-- ==================== MODAL EDIT PROFILE ==================== -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <h3>✏️ Edit Profil Tambak</h3>
@@ -276,7 +279,7 @@
     </div>
 </div>
 
-<!-- MODAL BUDIDAYA -->
+<!-- ==================== MODAL BUDIDAYA ==================== -->
 <div id="budidayaModal" class="modal">
     <div class="modal-content">
         <h3>📅 Mulai / Edit Budidaya</h3>
@@ -293,6 +296,56 @@
     </div>
 </div>
 
+<!-- ==================== MODAL KALIBRASI OFFSET MANUAL ==================== -->
+<div id="kalibrasiModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin:0;">🔧 Kalibrasi Offset Manual</h3>
+            <button onclick="closeKalibrasiModal()" style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">&times;</button>
+        </div>
+        
+        <div class="kalibrasi-info-box">
+            <strong>💡 Cara Kalibrasi Mudah:</strong>
+            <ol>
+                <li>Ambil sampel air tambak (1 botol)</li>
+                <li>Ukur dengan alat standar di rumah (pH meter/Turbidity meter)</li>
+                <li>Hitung selisih: <strong>Offset = Nilai Standar - Nilai Sensor</strong></li>
+                <li>Masukkan offset di bawah ini</li>
+            </ol>
+        </div>
+        
+        <div class="sensor-values-box">
+            <p>📊 Nilai Sensor Saat Ini:</p>
+            <p style="margin:0;">pH: <strong id="modalCurrentPh">--</strong> | Turbidity: <strong id="modalCurrentTurb">--</strong> NTU</p>
+        </div>
+        
+        <!-- Kalibrasi pH -->
+        <div style="margin-bottom:20px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600;">📈 Kalibrasi pH</label>
+            <div class="offset-input-group">
+                <input type="number" step="0.01" id="offsetPhInput" placeholder="Contoh: +0.30 atau -0.15">
+                <button onclick="savePHOffset()">Simpan</button>
+            </div>
+            <small class="current-offset">Offset saat ini: <span id="currentPhOffset">0</span></small>
+        </div>
+        
+        <!-- Kalibrasi Turbidity -->
+        <div style="margin-bottom:20px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600;">💧 Kalibrasi Turbidity</label>
+            <div class="offset-input-group">
+                <input type="number" id="offsetTurbInput" placeholder="Contoh: -50 atau +30">
+                <button onclick="saveTurbidityOffset()">Simpan</button>
+            </div>
+            <small class="current-offset">Offset saat ini: <span id="currentTurbOffset">0</span></small>
+        </div>
+        
+        <div class="modal-footer-buttons">
+            <button class="reset-btn" onclick="resetAllCalibrationConfirm()">🔄 Reset Semua</button>
+            <button class="close-btn" onclick="closeKalibrasiModal()">Tutup</button>
+        </div>
+    </div>
+</div>
+
 <!-- TOAST -->
 @if(session('success')) 
     <div class="toast success" id="toast">✅ {{ session('success') }}</div>
@@ -301,54 +354,268 @@
     <div class="toast error" id="toast">❌ {{ session('error') }}</div>
 @endif
 
+<!-- ==================== JAVASCRIPT ==================== -->
 <script>
-    // Auto reload setelah toast success
+    // ==================== VARIABLES ====================
+    let currentPh = null;
+    let currentTurbidity = null;
+    
+    // ==================== LOAD DATA ====================
     document.addEventListener('DOMContentLoaded', function() {
         const toast = document.getElementById('toast');
-        if (toast && toast.classList.contains('success')) {
+        if (toast) {
             setTimeout(() => {
-                location.reload();
-            }, 2000);
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
         
-        // 🔥 Update pakan hari ini secara real-time
-        updatePakanHariIni();
-        setInterval(updatePakanHariIni, 10000);
+        loadRealtimeData();
+        loadCalibrationStatus();
+        
+        setInterval(loadRealtimeData, 10000);
+        setInterval(loadCalibrationStatus, 30000);
+        
+        const fotoInput = document.getElementById('fotoInput');
+        const previewFoto = document.getElementById('previewFoto');
+        if (fotoInput && previewFoto) {
+            fotoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewFoto.src = event.target.result;
+                        previewFoto.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
     });
     
-    // 🔥 Fungsi update pakan hari ini (dalam KG)
-    function updatePakanHariIni() {
-        fetch('/api/feeding/today')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const pakanElement = document.getElementById('pakanHariIniProfile');
-                    if (pakanElement) {
-                        pakanElement.innerHTML = data.total_kg.toFixed(2) + ' <span>kg</span>';
+    // ==================== LOAD REALTIME DATA ====================
+    async function loadRealtimeData() {
+        try {
+            const response = await fetch('/api/sensor/realtime');
+            const data = await response.json();
+            
+            if (data.success !== false) {
+                currentPh = data.ph;
+                currentTurbidity = data.turbidity;
+                
+                // Update pH
+                const phElement = document.getElementById('qualityPh');
+                const phStatusElement = document.getElementById('qualityPhStatus');
+                if (phElement) phElement.innerText = data.ph.toFixed(2);
+                if (phStatusElement) {
+                    phStatusElement.innerText = capitalize(data.ph_status);
+                    phStatusElement.className = 'quality-status ' + getStatusClass(data.ph_status);
+                }
+                
+                // Update Turbidity
+                const turbElement = document.getElementById('qualityTurb');
+                const turbStatusElement = document.getElementById('qualityTurbStatus');
+                if (turbElement) turbElement.innerText = data.turbidity + ' NTU';
+                if (turbStatusElement) {
+                    turbStatusElement.innerText = capitalize(data.turbidity_status);
+                    turbStatusElement.className = 'quality-status ' + getStatusClass(data.turbidity_status);
+                }
+                
+                // Update info kalibrasi
+                const phCalibInfo = document.getElementById('phCalibInfo');
+                if (phCalibInfo && data.ph_offset !== undefined && data.ph_offset != 0) {
+                    phCalibInfo.innerHTML = `🔧 Offset: ${data.ph_offset > 0 ? '+' : ''}${data.ph_offset}`;
+                } else if (phCalibInfo) {
+                    phCalibInfo.innerHTML = '';
+                }
+                
+                const turbCalibInfo = document.getElementById('turbCalibInfo');
+                if (turbCalibInfo && data.turbidity_offset !== undefined && data.turbidity_offset != 0) {
+                    turbCalibInfo.innerHTML = `🔧 Offset: ${data.turbidity_offset > 0 ? '+' : ''}${data.turbidity_offset}`;
+                } else if (turbCalibInfo) {
+                    turbCalibInfo.innerHTML = '';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading realtime data:', error);
+            setDefaultValues();
+        }
+    }
+    
+    // ==================== LOAD CALIBRATION STATUS ====================
+    async function loadCalibrationStatus() {
+        try {
+            const response = await fetch('/api/calibration/status');
+            const data = await response.json();
+            
+            if (data.success) {
+                const statusDiv = document.getElementById('calibrationStatus');
+                if (statusDiv) {
+                    if (data.ph_offset != 0 || data.turbidity_offset != 0) {
+                        statusDiv.innerHTML = `✅ Terkalibrasi (pH: ${data.ph_offset > 0 ? '+' : ''}${data.ph_offset}, Turbidity: ${data.turbidity_offset > 0 ? '+' : ''}${data.turbidity_offset})`;
+                        statusDiv.style.color = '#10b981';
+                        statusDiv.style.background = '#d1fae5';
+                    } else {
+                        statusDiv.innerHTML = '⚠️ Sensor belum dikalibrasi, disarankan kalibrasi untuk akurasi optimal';
+                        statusDiv.style.color = '#d97706';
+                        statusDiv.style.background = '#fed7aa';
                     }
                 }
-            })
-            .catch(error => console.error('Error:', error));
+            }
+        } catch (error) {
+            console.error('Error loading calibration status:', error);
+        }
     }
     
-    function openEditModal() {
-        document.getElementById('editModal').style.display = 'flex';
+    // ==================== MODAL KALIBRASI ====================
+    async function openKalibrasiModal() {
+        document.getElementById('kalibrasiModal').style.display = 'flex';
+        await loadCurrentValuesForModal();
+        await loadOffsetStatus();
     }
     
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
+    function closeKalibrasiModal() {
+        document.getElementById('kalibrasiModal').style.display = 'none';
     }
     
+    async function loadCurrentValuesForModal() {
+        try {
+            const response = await fetch('/api/sensor/realtime');
+            const data = await response.json();
+            
+            if (data.success !== false) {
+                document.getElementById('modalCurrentPh').innerText = data.ph.toFixed(2);
+                document.getElementById('modalCurrentTurb').innerText = data.turbidity + ' NTU';
+            }
+        } catch (error) {
+            console.error('Error loading current values:', error);
+        }
+    }
+    
+    async function loadOffsetStatus() {
+        try {
+            const response = await fetch('/api/calibration/status');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('currentPhOffset').innerText = data.ph_offset;
+                document.getElementById('currentTurbOffset').innerText = data.turbidity_offset;
+            }
+        } catch (error) {
+            console.error('Error loading offset status:', error);
+        }
+    }
+    
+    // ==================== SAVE OFFSET ====================
+    async function savePHOffset() {
+        const offset = document.getElementById('offsetPhInput').value;
+        
+        if (!offset) {
+            showToast('Masukkan offset pH terlebih dahulu!', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/calibration/ph-offset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ offset: parseFloat(offset) })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadOffsetStatus();
+                loadRealtimeData();
+                document.getElementById('offsetPhInput').value = '';
+            } else {
+                showToast('Gagal: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Gagal menyimpan offset pH', 'error');
+        }
+    }
+    
+    async function saveTurbidityOffset() {
+        const offset = document.getElementById('offsetTurbInput').value;
+        
+        if (!offset) {
+            showToast('Masukkan offset turbidity terlebih dahulu!', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/calibration/turbidity-offset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ offset: parseFloat(offset) })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadOffsetStatus();
+                loadRealtimeData();
+                document.getElementById('offsetTurbInput').value = '';
+            } else {
+                showToast('Gagal: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Gagal menyimpan offset turbidity', 'error');
+        }
+    }
+    
+    // ==================== RESET KALIBRASI ====================
+    async function resetAllCalibrationConfirm() {
+        if (!confirm('⚠️ Yakin akan mereset semua kalibrasi? Nilai offset akan menjadi 0.')) {
+            return;
+        }
+        await resetAllCalibration();
+    }
+    
+    async function resetAllCalibration() {
+        try {
+            const response = await fetch('/api/calibration/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ type: 'all' })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadOffsetStatus();
+                loadRealtimeData();
+            } else {
+                showToast('Gagal: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Gagal reset kalibrasi', 'error');
+        }
+    }
+    
+    // ==================== BUDIDAYA FUNCTIONS ====================
     function openBudidayaModal() {
         document.getElementById('budidayaModal').style.display = 'flex';
     }
     
     function closeBudidayaModal() {
         document.getElementById('budidayaModal').style.display = 'none';
-    }
-    
-    function kalibrasi(type) {
-        showToast('Fitur kalibrasi ' + type + ' akan segera tersedia', 'info');
     }
     
     function resetBudidaya() {
@@ -376,76 +643,74 @@
         }
     }
     
-    function showToast(message, type) {
-        let toast = document.getElementById('toast');
-        if (toast) toast.remove();
-        toast = document.createElement('div');
-        toast.id = 'toast';
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<div class="toast-content">${type === 'success' ? '✅' : (type === 'error' ? '❌' : 'ℹ️')} ${message}</div>`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+    // ==================== MODAL FUNCTIONS ====================
+    function openEditModal() {
+        document.getElementById('editModal').style.display = 'flex';
     }
     
-    // Preview foto
-    document.getElementById('fotoInput')?.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const preview = document.getElementById('previewFoto');
-        if (file && preview) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                preview.src = event.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    // ==================== HELPER FUNCTIONS ====================
+    function capitalize(str) {
+        if (!str) return 'Normal';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    function getStatusClass(status) {
+        const statusMap = {
+            'baik': 'normal', 'good': 'normal', 'normal': 'normal',
+            'aman': 'normal', 'peringatan': 'warning', 'warning': 'warning',
+            'bahaya': 'danger', 'danger': 'danger'
+        };
+        return statusMap[status?.toLowerCase()] || 'normal';
+    }
+    
+    function setDefaultValues() {
+        const phElement = document.getElementById('qualityPh');
+        const phStatusElement = document.getElementById('qualityPhStatus');
+        const turbElement = document.getElementById('qualityTurb');
+        const turbStatusElement = document.getElementById('qualityTurbStatus');
+        
+        if (phElement) phElement.innerText = '7.0';
+        if (phStatusElement) {
+            phStatusElement.innerText = 'Normal';
+            phStatusElement.className = 'quality-status normal';
         }
-    });
-</script>
-<script>
-function kalibrasiPH() {
-    fetch('/api/realtime')
-        .then(res => res.json())
-        .then(data => {
-            const currentPh = data.ph;
-            if (confirm(`Kalibrasi pH dari ${currentPh} ke 7.0?`)) {
-                fetch('/api/calibrate/ph', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({ desired_value: 7.0, current_value: currentPh })
-                })
-                .then(res => res.json())
-                .then(result => {
-                    alert(result.message);
-                    if (result.success) location.reload();
-                });
+        if (turbElement) turbElement.innerText = '30 NTU';
+        if (turbStatusElement) {
+            turbStatusElement.innerText = 'Normal';
+            turbStatusElement.className = 'quality-status normal';
+        }
+    }
+    
+    function showToast(message, type = 'success') {
+        let toast = document.getElementById('dynamicToast');
+        if (toast) toast.remove();
+        
+        toast = document.createElement('div');
+        toast.id = 'dynamicToast';
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<div>${type === 'success' ? '✅' : '❌'} ${message}</div>`;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    // Close modal on outside click
+    window.onclick = function(event) {
+        const modals = ['editModal', 'budidayaModal', 'kalibrasiModal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (event.target === modal) {
+                modal.style.display = 'none';
             }
         });
-}
+    }
+</script>
 
-function kalibrasiTurbidity() {
-    fetch('/api/realtime')
-        .then(res => res.json())
-        .then(data => {
-            const currentTurb = data.turbidity;
-            if (confirm(`Kalibrasi Turbidity dari ${currentTurb} ke 30 NTU?`)) {
-                fetch('/api/calibrate/turbidity', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({ desired_value: 30, current_value: currentTurb })
-                })
-                .then(res => res.json())
-                .then(result => {
-                    alert(result.message);
-                    if (result.success) location.reload();
-                });
-            }
-        });
-}
-</script>
 @endsection

@@ -27,12 +27,21 @@ class TambakProfile extends Model
         'nomor_wa',
         'penjaga',
         'cuaca',
-        'intensitas_hujan'
+        'intensitas_hujan',
+        // 🔥 KOLOM KALIBRASI (TAMBAHAN)
+        'ph_raw',
+        'ph_offset',
+        'turbidity_raw',
+        'turbidity_offset',
+        'last_calibration_ph',
+        'last_calibration_turbidity'
     ];
     
     protected $casts = [
         'tanggal_mulai_budidaya' => 'date',
         'tanggal_tebar' => 'date',
+        'last_calibration_ph' => 'datetime',
+        'last_calibration_turbidity' => 'datetime',
     ];
     
     /**
@@ -102,5 +111,72 @@ class TambakProfile extends Model
     {
         if (!$this->tanggal_mulai_budidaya) return '-';
         return $this->tanggal_mulai_budidaya->format('d/m/Y');
+    }
+    
+    // 🔥 ==================== METHOD KALIBRASI ====================
+    
+    /**
+     * Get calibrated pH value
+     */
+    public function getCalibratedPhAttribute()
+    {
+        $raw = $this->ph_raw ?? 7.0;
+        $offset = $this->ph_offset ?? 0;
+        $value = $raw + $offset;
+        // Batasi range pH 0-14
+        return max(0, min(14, round($value, 2)));
+    }
+    
+    /**
+     * Get calibrated turbidity value (0-1000 NTU)
+     */
+    public function getCalibratedTurbidityAttribute()
+    {
+        $raw = $this->turbidity_raw ?? 30;
+        $offset = $this->turbidity_offset ?? 0;
+        $value = $raw + $offset;
+        // Batasi range 0-1000 NTU
+        return max(0, min(1000, round($value)));
+    }
+    
+    /**
+     * Get pH status based on value
+     */
+    public function getPhStatusAttribute()
+    {
+        $ph = $this->calibrated_ph;
+        if ($ph >= 7.5 && $ph <= 8.5) return 'baik';
+        if ($ph >= 7.0 && $ph < 7.5) return 'normal';
+        if ($ph > 8.5 && $ph <= 9.0) return 'warning';
+        if ($ph < 6.0 || $ph > 9.0) return 'danger';
+        return 'normal';
+    }
+    
+    /**
+     * Get turbidity status based on value (0-1000 NTU)
+     */
+    public function getTurbidityStatusAttribute()
+    {
+        $turb = $this->calibrated_turbidity;
+        if ($turb <= 50) return 'baik';
+        if ($turb <= 100) return 'normal';
+        if ($turb <= 200) return 'warning';
+        return 'danger';
+    }
+    
+    /**
+     * Cek apakah pH sudah dikalibrasi
+     */
+    public function getIsPhCalibratedAttribute()
+    {
+        return !is_null($this->last_calibration_ph) && $this->ph_offset != 0;
+    }
+    
+    /**
+     * Cek apakah turbidity sudah dikalibrasi
+     */
+    public function getIsTurbidityCalibratedAttribute()
+    {
+        return !is_null($this->last_calibration_turbidity) && $this->turbidity_offset != 0;
     }
 }

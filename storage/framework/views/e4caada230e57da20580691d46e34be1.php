@@ -4,10 +4,51 @@
 
 <?php $__env->startPush('styles'); ?>
 <link rel="stylesheet" href="<?php echo e(asset('css/home.css')); ?>">
+<style>
+    /* Memastikan teks di card cuaca berwarna hitam */
+    .stat-card .stat-info h3,
+    .stat-card .stat-info p,
+    .stat-card .stat-info small {
+        color: #000000 !important;
+    }
+    
+    /* Alert box teks hitam */
+    .alert-premium {
+        color: #000000 !important;
+    }
+    
+    /* Welcome header teks tetap putih */
+    .welcome-header h2, 
+    .welcome-header p {
+        color: white !important;
+    }
+    
+    /* Card lainnya tetap */
+    .feeding-card, .info-list li span, .info-list li strong {
+        color: #000000;
+    }
+    
+    /* Gauge label */
+    .gauge-label {
+        color: #000000 !important;
+    }
+</style>
 <?php $__env->stopPush(); ?>
 
 <?php $__env->startSection('content'); ?>
 <div class="dashboard-container">
+    
+    <!-- WELCOME HEADER dengan data dari Profile Tambak -->
+    <div class="welcome-header" style="margin-bottom: 20px; background: rgba(255,255,255,0.15); padding: 15px 20px; border-radius: 16px; backdrop-filter: blur(8px);">
+        <h2 style="font-size: 24px; font-weight: 600; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); margin: 0;">
+            Selamat Datang, <?php echo e(session('user_name') ?? 'Petambak'); ?>! 👋
+        </h2>
+        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0;">
+            <i class="fas fa-fish"></i> <?php echo e($profileData['nama_tambak'] ?? session('tambak_name') ?? 'Tambak Berkah'); ?> • 
+            <i class="fas fa-map-marker-alt"></i> <?php echo e($profileData['lokasi'] ?? session('lokasi_tambak') ?? 'Desa Nambakor, Sumenep'); ?>
+
+        </p>
+    </div>
     
     <!-- STATS GRID - 3 CARD (PAKAN, KONDISI AIR, POPULASI) -->
     <div class="stats-grid">
@@ -44,15 +85,47 @@
         <div class="stat-card">
             <div class="stat-icon">🌤️</div>
             <div class="stat-info">
-                <h3 id="cuacaText">Memuat...</h3>
-                <p id="suhuText">Suhu: --°C</p>
+                <h3 id="cuacaText">
+                    <?php if(isset($weather) && $weather['success']): ?>
+                        <?php echo e($weather['cuaca']); ?>
+
+                    <?php else: ?>
+                        Memuat...
+                    <?php endif; ?>
+                </h3>
+                <p id="suhuText">
+                    <?php if(isset($weather) && $weather['success']): ?>
+                        Suhu: <?php echo e($weather['suhu']); ?>°C
+                    <?php else: ?>
+                        Suhu: --°C
+                    <?php endif; ?>
+                </p>
+                <small style="font-size: 10px;" id="lokasiText">
+                    <?php if(isset($weather) && $weather['success']): ?>
+                        📍 <?php echo e($weather['location'] ?? 'Nambakor, Sumenep'); ?>
+
+                    <?php endif; ?>
+                </small>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">☔</div>
             <div class="stat-info">
-                <h3 id="hujanText">0 <span>mm</span></h3>
+                <h3 id="hujanText">
+                    <?php if(isset($weather) && $weather['success']): ?>
+                        <?php echo e($weather['intensitas_hujan']); ?> <span>mm</span>
+                    <?php else: ?>
+                        0 <span>mm</span>
+                    <?php endif; ?>
+                </h3>
                 <p>Intensitas Hujan</p>
+                <small style="font-size: 10px;" id="hujanKeterangan">
+                    <?php if(isset($weather) && $weather['success'] && $weather['intensitas_hujan'] > 0): ?>
+                        🌧️ Hujan dalam 1 jam terakhir
+                    <?php elseif(isset($weather) && $weather['success']): ?>
+                        ☀️ Tidak ada hujan
+                    <?php endif; ?>
+                </small>
             </div>
         </div>
         <div class="stat-card">
@@ -66,7 +139,14 @@
     <!-- ============================================================= -->
 
     <!-- ALERT BOX -->
-    <div id="alertBox" class="alert-premium normal">✅ Memuat data sensor...</div>
+    <div id="alertBox" class="alert-premium normal">
+        <?php if(isset($weather) && $weather['success'] && isset($weather['feed_recommendation'])): ?>
+            <?php echo $weather['feed_recommendation']['message']; ?>
+
+        <?php else: ?>
+            ✅ Memuat data sensor...
+        <?php endif; ?>
+    </div>
 
     <!-- CONTENT GRID - 2 CARD (GAUGE + FEED) -->
     <div class="content-grid-two">
@@ -113,7 +193,22 @@
                 <li><span>Frekuensi</span><strong>3x sehari</strong></li>
                 <li><span>Waktu</span><strong>Pagi | Siang | Sore</strong></li>
                 <li><span>Berdasarkan</span><strong>Kondisi air & biomassa</strong></li>
-                <li><span>Cuaca Saat Ini</span><strong id="cuacaFeedInfo">Memuat...</strong></li>
+                <li><span>Cuaca Saat Ini</span>
+                    <strong id="cuacaFeedInfo">
+                        <?php if(isset($weather) && $weather['success']): ?>
+                            <?php echo e($weather['cuaca']); ?>
+
+                        <?php else: ?>
+                            Memuat...
+                        <?php endif; ?>
+                    </strong>
+                </li>
+                <?php if(isset($weather) && $weather['success'] && isset($weather['feed_recommendation'])): ?>
+                <li style="color: <?php echo e($weather['feed_recommendation']['status'] === 'warning' ? '#f59e0b' : ($weather['feed_recommendation']['status'] === 'success' ? '#10b981' : '#000000')); ?>">
+                    <span>Rekomendasi Cuaca</span>
+                    <strong><?php echo e($weather['feed_recommendation']['message']); ?></strong>
+                </li>
+                <?php endif; ?>
             </ul>
             <div class="feed-box">
                 <div class="feed-label">ESTIMASI PAKAN</div>
@@ -184,7 +279,19 @@
 <script>
     window.ruleSensor = <?php echo json_encode($rule ?? null, 15, 512) ?>;
     
+    // Data cuaca dari server (Sumenep - Nambakor)
+    window.weatherData = <?php echo json_encode($weather ?? null, 15, 512) ?>;
+    
+    // Data user dari session untuk JavaScript
+    window.userData = {
+        id: <?php echo e(session('user_id')); ?>,
+        name: "<?php echo e(session('user_name')); ?>",
+        tambakName: "<?php echo e($profileData['nama_tambak'] ?? session('tambak_name') ?? 'Tambak Berkah'); ?>",
+        lokasi: "<?php echo e($profileData['lokasi'] ?? session('lokasi_tambak') ?? 'Desa Nambakor, Sumenep'); ?>"
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
+        // Tampilkan rule engine
         if (window.ruleSensor) {
             document.getElementById('ruleDetail').innerHTML = `
                 <strong>📐 Detail Rule:</strong><br>
@@ -197,9 +304,42 @@
             `;
         }
         
+        // Tampilkan data cuaca awal dari server
+        if (window.weatherData && window.weatherData.success) {
+            // Update tampilan cuaca
+            if (document.getElementById('cuacaText')) {
+                document.getElementById('cuacaText').innerHTML = window.weatherData.cuaca;
+            }
+            if (document.getElementById('suhuText')) {
+                document.getElementById('suhuText').innerHTML = `Suhu: ${window.weatherData.suhu}°C`;
+            }
+            if (document.getElementById('hujanText')) {
+                const hujan = window.weatherData.intensitas_hujan || 0;
+                document.getElementById('hujanText').innerHTML = `${hujan} <span>mm</span>`;
+            }
+            if (document.getElementById('cuacaFeedInfo')) {
+                document.getElementById('cuacaFeedInfo').innerHTML = window.weatherData.cuaca;
+            }
+            
+            // Update alert berdasarkan cuaca
+            if (window.weatherData.feed_recommendation) {
+                const alertBox = document.getElementById('alertBox');
+                const rec = window.weatherData.feed_recommendation;
+                
+                if (rec.status === 'warning') {
+                    alertBox.className = 'alert-premium warning';
+                    alertBox.innerHTML = `⚠️ ${rec.message}`;
+                } else if (rec.status === 'success') {
+                    alertBox.className = 'alert-premium success';
+                    alertBox.innerHTML = `✅ ${rec.message}`;
+                }
+            }
+        }
+        
+        // Inisialisasi semua fungsi
         if (typeof initAllCharts === 'function') setTimeout(initAllCharts, 100);
         if (typeof loadRealtime === 'function') { loadRealtime(); setInterval(loadRealtime, 3000); }
-        if (typeof loadCuaca === 'function') { loadCuaca(); setInterval(loadCuaca, 30000); }
+        if (typeof loadCuaca === 'function') { loadCuaca(); setInterval(loadCuaca, 1800000); }
         if (typeof loadProductionData === 'function') { loadProductionData(); setInterval(loadProductionData, 30000); }
     });
 </script>

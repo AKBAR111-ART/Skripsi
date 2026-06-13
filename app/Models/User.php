@@ -2,48 +2,53 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Carbon\Carbon;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
+        'tambak_name',
+        'lokasi_tambak',
+        'populasi',
+        'berat_rata',
+        'target_panen_kg',
+        'target_size_gram',
+        'tebar_date',
+        'is_active',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    // Hitung umur budidaya dalam minggu
+    public function getUmurMingguAttribute()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        if (!$this->tebar_date) return 0;
+        return Carbon::parse($this->tebar_date)->diffInWeeks(Carbon::now());
+    }
+
+    // Hitung biomassa (kg)
+    public function getBiomassaAttribute()
+    {
+        return ($this->populasi * $this->berat_rata) / 1000;
+    }
+
+    // Allow login using phone or email
+    public function findForLogin($username)
+    {
+        return $this->where('phone', $username)
+                    ->orWhere('email', $username)
+                    ->first();
     }
 }

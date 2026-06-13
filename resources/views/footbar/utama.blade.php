@@ -89,7 +89,7 @@
         </div>
         <div class="header-right">
             <div class="profile-trigger" onclick="toggleProfilePanel()">
-                <img src="{{ asset('images/default-avatar.png') }}" alt="Avatar">
+                <img src="{{ asset('images/profile.jpg') }}" alt="Avatar">
             </div>
         </div>
     </div>
@@ -104,10 +104,10 @@
 
     <!-- FOOTBAR -->
     <nav class="app-footbar">
-        <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
+       <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+</a>
         <a href="{{ route('monitoring') }}" class="{{ request()->routeIs('monitoring') ? 'active' : '' }}">
             <i class="fas fa-chart-line"></i>
             <span>Monitoring</span>

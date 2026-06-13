@@ -1,12 +1,13 @@
 <div id="profilePanel" class="profile-panel">
     <div class="profile-panel-header">
-        <img src="<?php echo e(asset('images/default-avatar.png')); ?>" alt="Avatar">
-        <h4><?php echo e(Auth::user()->name ?? 'Pengguna'); ?></h4>
-        <p><?php echo e(Auth::user()->email ?? 'user@example.com'); ?></p>
+        <img src="<?php echo e(session('avatar', asset('images/profile.jpg'))); ?>" alt="Avatar">
+        <h4><?php echo e(session('user_name', 'Pengguna')); ?></h4>
+        <p><?php echo e(session('user_phone', '-')); ?></p>
+        <small style="font-size: 10px; opacity: 0.7;"><?php echo e(session('user_email', '')); ?></small>
     </div>
     <div class="profile-panel-menu">
         <a href="<?php echo e(route('profile.index')); ?>">
-            <i class="fas fa-user"></i>
+            <i class="fas fa-fish"></i>
             <span>Profil Tambak</span>
         </a>
         <a href="<?php echo e(route('pengaturan.index')); ?>">
@@ -48,7 +49,7 @@
     }
     
     .profile-panel-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
         padding: 20px;
         text-align: center;
         color: white;
@@ -71,8 +72,16 @@
     
     .profile-panel-header p {
         margin: 5px 0 0;
-        font-size: 11px;
-        opacity: 0.8;
+        font-size: 12px;
+        opacity: 0.9;
+    }
+    
+    .profile-panel-header small {
+        display: block;
+        margin-top: 4px;
+        font-size: 10px;
+        opacity: 0.7;
+        word-break: break-all;
     }
     
     .profile-panel-menu {
@@ -96,7 +105,7 @@
     
     .profile-panel-menu i {
         width: 20px;
-        color: #667eea;
+        color: #0f766e;
         font-size: 16px;
     }
     

@@ -13,6 +13,25 @@ use App\Http\Controllers\HomeController;
 | API Routes (IoT Tambak Udang)
 |--------------------------------------------------------------------------
 */
+
+
+// ==================== SENSOR API ====================
+Route::post('/sensor/data', [SensorController::class, 'store']);
+Route::get('/sensor/feeding-recommendation', [SensorController::class, 'getFeedingRecommendation']);
+Route::get('/sensor/production-variables', [SensorController::class, 'getProductionVariables']);
+
+// ==================== KALIBRASI OFFSET MANUAL ====================
+Route::post('/calibration/ph-offset', [SensorController::class, 'setPHOffset']);
+Route::post('/calibration/turbidity-offset', [SensorController::class, 'setTurbidityOffset']);
+Route::post('/calibration/reset', [SensorController::class, 'resetCalibrationOffset']);
+
+// Kalibrasi Offset Manual
+Route::post('/calibration/ph-offset', [App\Http\Controllers\SensorController::class, 'setPHOffset']);
+Route::post('/calibration/turbidity-offset', [App\Http\Controllers\SensorController::class, 'setTurbidityOffset']);
+Route::get('/calibration/status', [App\Http\Controllers\SensorController::class, 'getCalibrationStatus']);
+Route::post('/calibration/reset', [App\Http\Controllers\SensorController::class, 'resetCalibration']);
+// Endpoint untuk ESP32 mendapatkan status dari Laravel
+Route::get('/sensor/status-for-esp', [SensorController::class, 'getStatusForEsp']);
 Route::get('/jadwal-list', [PengaturanController::class, 'getJadwalList']);
 Route::post('/jadwal-store', [PengaturanController::class, 'storeJadwal']);
 Route::delete('/jadwal-delete/{id}', [PengaturanController::class, 'deleteJadwal']);

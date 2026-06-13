@@ -505,3 +505,15 @@
     width: 100% !important;
     height: 100% !important;
 }
+/* Alert Premium dengan status */
+.alert-premium.warning {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+}
+
+.alert-premium.success {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}

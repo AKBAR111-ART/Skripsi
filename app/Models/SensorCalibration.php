@@ -1,117 +1,140 @@
 <?php
-// app/Models/SensorCalibration.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class SensorCalibration extends Model
 {
-    protected $table = 'sensor_calibration';
+    protected $table = 'sensor_calibrations';
     
     protected $fillable = [
-        'ph_offset', 'ph_default', 
-        'turbidity_offset', 'turbidity_default',
-        'is_calibrated', 'last_calibration', 'noise_level'
+        'ph_offset', 'turbidity_offset', 'calibrated_by', 
+        'noise_level', 'is_calibrated', 'last_calibration'
     ];
     
-    protected $casts = [
-        'is_calibrated' => 'boolean',
-        'last_calibration' => 'datetime'
-    ];
-    
-    // Ambil data kalibrasi (selalu 1 baris)
+    /**
+     * Mendapatkan data kalibrasi
+     */
     public static function getCalibration()
     {
-        $calib = self::first();
-        if (!$calib) {
-            $calib = self::create([
-                'ph_offset' => 0,
-                'ph_default' => 7.0,
-                'turbidity_offset' => 0,
-                'turbidity_default' => 30,
-                'is_calibrated' => false,
-                'noise_level' => 'rendah'
-            ]);
-        }
-        return $calib;
+        return Cache::remember('sensor_calibration_data', 300, function () {
+            $calib = DB::table('sensor_calibrations')->first();
+            
+            if (!$calib) {
+                $id = DB::table('sensor_calibrations')->insertGetId([
+                    'ph_offset' => 0,
+                    'turbidity_offset' => 0,
+                    'noise_level' => 'rendah',
+                    'is_calibrated' => false,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                $calib = DB::table('sensor_calibrations')->find($id);
+            }
+            
+            return $calib;
+        });
     }
     
-    // Hitung nilai setelah kalibrasi
+    /**
+     * Mengupdate offset pH
+     */
+    public static function setPHOffset($offset, $calibratedBy = null)
+    {
+        $data = [
+            'ph_offset' => $offset,
+            'last_calibration' => now(),
+            'is_calibrated' => true,
+            'updated_at' => now()
+        ];
+        
+        if ($calibratedBy) {
+            $data['calibrated_by'] = $calibratedBy;
+        }
+        
+        DB::table('sensor_calibrations')->updateOrInsert(
+            ['id' => 1],
+            $data
+        );
+        
+        Cache::forget('sensor_calibration_data');
+        Cache::forget('sensor_realtime_display');
+        
+        return true;
+    }
+    
+    /**
+     * Mengupdate offset turbidity
+     */
+    public static function setTurbidityOffset($offset, $calibratedBy = null)
+    {
+        $data = [
+            'turbidity_offset' => $offset,
+            'last_calibration' => now(),
+            'is_calibrated' => true,
+            'updated_at' => now()
+        ];
+        
+        if ($calibratedBy) {
+            $data['calibrated_by'] = $calibratedBy;
+        }
+        
+        DB::table('sensor_calibrations')->updateOrInsert(
+            ['id' => 1],
+            $data
+        );
+        
+        Cache::forget('sensor_calibration_data');
+        Cache::forget('sensor_realtime_display');
+        
+        return true;
+    }
+    
+    /**
+     * Mereset kalibrasi
+     */
+    public static function resetCalibration($type = 'all', $calibratedBy = null)
+    {
+        $updateData = ['updated_at' => now()];
+        
+        if ($type == 'ph' || $type == 'all') {
+            $updateData['ph_offset'] = 0;
+        }
+        
+        if ($type == 'turbidity' || $type == 'all') {
+            $updateData['turbidity_offset'] = 0;
+        }
+        
+        if ($calibratedBy) {
+            $updateData['calibrated_by'] = $calibratedBy;
+        }
+        
+        DB::table('sensor_calibrations')->updateOrInsert(['id' => 1], $updateData);
+        
+        Cache::forget('sensor_calibration_data');
+        Cache::forget('sensor_realtime_display');
+        
+        return true;
+    }
+    
+    /**
+     * Mendapatkan nilai yang sudah dikalibrasi
+     */
     public static function getCalibratedValue($rawValue, $type)
     {
-        $calib = self::getCalibration();
+        $calibration = self::getCalibration();
         
-        if ($type === 'ph') {
-            $calibrated = $rawValue - $calib->ph_offset;
-            
-            // Update noise level berdasarkan offset
-            if (abs($calib->ph_offset) > 1.5) {
-                $calib->update(['noise_level' => 'tinggi']);
-            } elseif (abs($calib->ph_offset) > 0.5) {
-                $calib->update(['noise_level' => 'sedang']);
-            } else {
-                $calib->update(['noise_level' => 'rendah']);
-            }
-            
-            return round($calibrated, 2);
+        if ($type == 'ph') {
+            $calibrated = (float)$rawValue + (float)$calibration->ph_offset;
+            $calibrated = max(0, min(14, $calibrated));
+        } else {
+            $calibrated = (int)$rawValue + (int)$calibration->turbidity_offset;
+            $calibrated = max(0, min(1000, $calibrated));
         }
         
-        if ($type === 'turbidity') {
-            $calibrated = $rawValue - $calib->turbidity_offset;
-            
-            // Update noise level berdasarkan offset
-            if (abs($calib->turbidity_offset) > 20) {
-                $calib->update(['noise_level' => 'tinggi']);
-            } elseif (abs($calib->turbidity_offset) > 10) {
-                $calib->update(['noise_level' => 'sedang']);
-            } else {
-                $calib->update(['noise_level' => 'rendah']);
-            }
-            
-            return max(0, round($calibrated, 0));
-        }
-        
-        return $rawValue;
-    }
-    
-    // Reset kalibrasi (kembalikan ke nilai default)
-    public static function resetCalibration($type)
-    {
-        $calib = self::getCalibration();
-        
-        if ($type === 'ph') {
-            $calib->ph_offset = 0;
-            $calib->ph_default = 7.0;
-        } elseif ($type === 'turbidity') {
-            $calib->turbidity_offset = 0;
-            $calib->turbidity_default = 30;
-        }
-        
-        $calib->is_calibrated = false;
-        $calib->last_calibration = now();
-        $calib->save();
-        
-        return $calib;
-    }
-    
-    // Set kalibrasi baru berdasarkan nilai yang diinginkan
-    public static function setCalibration($type, $desiredValue, $currentValue)
-    {
-        $calib = self::getCalibration();
-        
-        if ($type === 'ph') {
-            $calib->ph_offset = $currentValue - $desiredValue;
-            $calib->ph_default = $desiredValue;
-        } elseif ($type === 'turbidity') {
-            $calib->turbidity_offset = $currentValue - $desiredValue;
-            $calib->turbidity_default = $desiredValue;
-        }
-        
-        $calib->is_calibrated = true;
-        $calib->last_calibration = now();
-        $calib->save();
-        
-        return $calib;
+        return $calibrated;
     }
 }

@@ -10,12 +10,24 @@ use App\Models\TambakProfile;
 use App\Models\SensorRealtime;
 use App\Models\Sensor;
 use App\Models\FeedingRecord;
+use App\Services\WeatherService; // 🔥 Tambahkan WeatherService
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+
 class HomeController extends Controller
 {
+    protected $weatherService;
+
+    /**
+     * Constructor with dependency injection
+     */
+    public function __construct(WeatherService $weatherService)
+    {
+        $this->weatherService = $weatherService;
+    }
+
     /**
      * Display the home/dashboard page
      */
@@ -23,6 +35,15 @@ class HomeController extends Controller
     {
         // 🔥 AMBIL DATA PROFILE TERBARU
         $profile = TambakProfile::first();
+        
+        // 🔥 DATA PROFILE UNTUK WELCOME HEADER
+        $profileData = [
+            'nama_tambak' => $profile->nama_tambak ?? session('tambak_name') ?? 'Tambak Berkah',
+            'lokasi' => $profile->lokasi ?? session('lokasi_tambak') ?? 'Nambakor, Sumenep',
+            'populasi' => $profile->populasi ?? 5000,
+            'avg_weight' => $profile->avg_weight ?? 15,
+            'tanggal_mulai' => $profile->tanggal_mulai_budidaya ?? null,
+        ];
         
         // 🔥 AMBIL POPULASI TERBARU DARI DATABASE
         $populasi = $profile->populasi ?? 5000;
@@ -61,6 +82,9 @@ class HomeController extends Controller
             ]);
         }
         
+        // 🔥 AMBIL DATA CUACA DARI WEATHER SERVICE (Sumenep - Nambakor)
+        $weather = $this->weatherService->getWeatherSumenep();
+        
         // Data tambak untuk view
         $tambak = [
             'nama' => $profile->nama_tambak ?? 'Tambak Mandhala',
@@ -71,103 +95,117 @@ class HomeController extends Controller
             'umur_minggu' => $umur_minggu
         ];
         
-        return view('dashboard.home', compact('pakanHariIni', 'umur_minggu', 'berat_rata', 'biomassa', 'rule', 'tambak', 'populasi'));
+        return view('dashboard.home', compact(
+            'pakanHariIni', 
+            'umur_minggu', 
+            'berat_rata', 
+            'biomassa', 
+            'rule', 
+            'tambak', 
+            'populasi',
+            'weather',
+            'profileData' // 🔥 Tambahkan profileData ke view
+        ));
     }
     
     /**
      * Get realtime sensor data (API endpoint)
      */
     public function getRealtimeData()
-{
-    try {
-        // Ambil dari sensor_realtime
-        $sensor = SensorRealtime::first();
-        
-        if (!$sensor) {
-            $sensor = Sensor::latest()->first();
-        }
-        
-        if (!$sensor) {
-            // Fallback data jika belum ada sensor
+    {
+        try {
+            // Ambil dari sensor_realtime
+            $sensor = SensorRealtime::first();
+            
+            if (!$sensor) {
+                $sensor = Sensor::latest()->first();
+            }
+            
+            if (!$sensor) {
+                // Fallback data jika belum ada sensor
+                return response()->json([
+                    'ph' => 7.5,
+                    'ph_status' => 'baik',
+                    'turbidity' => 30,
+                    'turbidity_status' => 'baik',
+                    'source' => 'fallback'
+                ]);
+            }
+            
+            // Hitung status berdasarkan rule jika perlu
+            $rule = RuleSensor::first();
+            
+            $phStatus = $this->getPhStatus($sensor->ph, $rule);
+            $turbidityStatus = $this->getTurbidityStatus($sensor->turbidity, $rule);
+            
+            return response()->json([
+                'ph' => (float)$sensor->ph,
+                'ph_status' => $phStatus,
+                'turbidity' => (float)$sensor->turbidity,
+                'turbidity_status' => $turbidityStatus,
+                'source' => 'database',
+                'last_update' => $sensor->created_at
+            ]);
+            
+        } catch (\Exception $e) {
             return response()->json([
                 'ph' => 7.5,
                 'ph_status' => 'baik',
                 'turbidity' => 30,
                 'turbidity_status' => 'baik',
-                'source' => 'fallback'
+                'error' => $e->getMessage()
             ]);
         }
-        
-        // Hitung status berdasarkan rule jika perlu
-        $rule = RuleSensor::first();
-        
-        $phStatus = $this->getPhStatus($sensor->ph, $rule);
-        $turbidityStatus = $this->getTurbidityStatus($sensor->turbidity, $rule);
-        
-        return response()->json([
-            'ph' => (float)$sensor->ph,
-            'ph_status' => $phStatus,
-            'turbidity' => (float)$sensor->turbidity,
-            'turbidity_status' => $turbidityStatus,
-            'source' => 'database',
-            'last_update' => $sensor->created_at
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'ph' => 7.5,
-            'ph_status' => 'baik',
-            'turbidity' => 30,
-            'turbidity_status' => 'baik',
-            'error' => $e->getMessage()
-        ]);
     }
-}
-private function getPhStatus($ph, $rule = null)
-{
-    if (!$rule) {
-        $rule = RuleSensor::first();
-    }
-    
-    if ($rule) {
-        if ($ph <= $rule->ph_danger_low || $ph >= $rule->ph_danger_high) {
-            return 'bahaya';
-        }
-        if (($ph >= $rule->ph_min_warning && $ph <= $rule->ph_max_warning) || 
-            ($ph >= $rule->ph_min_warning_high && $ph <= $rule->ph_max_warning_high)) {
-            return 'peringatan';
-        }
-    }
-    
-    // Default rule
-    if ($ph < 6.5 || $ph > 9.0) return 'bahaya';
-    if ($ph < 7.0 || $ph > 8.5) return 'peringatan';
-    return 'baik';
-}
 
-/**
- * Get turbidity status based on rules
- */
-private function getTurbidityStatus($turbidity, $rule = null)
-{
-    if (!$rule) {
-        $rule = RuleSensor::first();
-    }
-    
-    if ($rule) {
-        if ($turbidity <= $rule->turbidity_danger_low || $turbidity >= $rule->turbidity_danger_high) {
-            return 'bahaya';
+    /**
+     * Get pH status based on rules
+     */
+    private function getPhStatus($ph, $rule = null)
+    {
+        if (!$rule) {
+            $rule = RuleSensor::first();
         }
-        if ($turbidity >= $rule->turbidity_min_warning && $turbidity <= $rule->turbidity_max_warning) {
-            return 'peringatan';
+        
+        if ($rule) {
+            if ($ph <= $rule->ph_danger_low || $ph >= $rule->ph_danger_high) {
+                return 'bahaya';
+            }
+            if (($ph >= $rule->ph_min_warning && $ph <= $rule->ph_max_warning) || 
+                ($ph >= $rule->ph_min_warning_high && $ph <= $rule->ph_max_warning_high)) {
+                return 'peringatan';
+            }
         }
+        
+        // Default rule
+        if ($ph < 6.5 || $ph > 9.0) return 'bahaya';
+        if ($ph < 7.0 || $ph > 8.5) return 'peringatan';
+        return 'baik';
     }
-    
-    // Default rule
-    if ($turbidity < 10 || $turbidity > 70) return 'bahaya';
-    if ($turbidity > 50) return 'peringatan';
-    return 'baik';
-}
+
+    /**
+     * Get turbidity status based on rules
+     */
+    private function getTurbidityStatus($turbidity, $rule = null)
+    {
+        if (!$rule) {
+            $rule = RuleSensor::first();
+        }
+        
+        if ($rule) {
+            if ($turbidity <= $rule->turbidity_danger_low || $turbidity >= $rule->turbidity_danger_high) {
+                return 'bahaya';
+            }
+            if ($turbidity >= $rule->turbidity_min_warning && $turbidity <= $rule->turbidity_max_warning) {
+                return 'peringatan';
+            }
+        }
+        
+        // Default rule
+        if ($turbidity < 10 || $turbidity > 70) return 'bahaya';
+        if ($turbidity > 50) return 'peringatan';
+        return 'baik';
+    }
     
     /**
      * Get latest profile data (API endpoint)
@@ -201,50 +239,50 @@ private function getTurbidityStatus($turbidity, $rule = null)
     /**
      * Send feed command (API endpoint)
      */
-  public function sendPakan(Request $request)
-{
-    try {
-        // Ambil input (support kedua nama)
-        $pakanGram = $request->input('target_gram') ?? $request->input('pakan');
-        
-        // Validasi
-        if (!$pakanGram || $pakanGram <= 0) {
+    public function sendPakan(Request $request)
+    {
+        try {
+            // Ambil input (support kedua nama)
+            $pakanGram = $request->input('target_gram') ?? $request->input('pakan');
+            
+            // Validasi
+            if (!$pakanGram || $pakanGram <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah pakan tidak valid. Minimal 1 gram.'
+                ]);
+            }
+            
+            $jadwal = $request->input('jadwal', $this->getJadwalByTime());
+            $sumber = $request->input('sumber', 'manual');
+            $pakanKg = round($pakanGram / 1000, 2);
+            
+            // Simpan ke database
+            $feedingRecord = FeedingRecord::create([
+                'pakan_kg' => $pakanKg,
+                'target_gram' => $pakanGram,
+                'jadwal' => $jadwal,
+                'sumber' => $sumber,
+                'status' => 'success',
+                'waktu_pemberian' => now()->format('H:i:s'),
+                'keterangan' => "Pemberian pakan via {$sumber}"
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim!",
+                'data' => $feedingRecord
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error sendPakan: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Jumlah pakan tidak valid. Minimal 1 gram.'
-            ]);
+                'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
+            ], 500);
         }
-        
-        $jadwal = $request->input('jadwal', $this->getJadwalByTime());
-        $sumber = $request->input('sumber', 'manual');
-        $pakanKg = round($pakanGram / 1000, 2);
-        
-        // Simpan ke database
-        $feedingRecord = FeedingRecord::create([
-            'pakan_kg' => $pakanKg,
-            'target_gram' => $pakanGram,
-            'jadwal' => $jadwal,
-            'sumber' => $sumber,
-            'status' => 'success',
-            'waktu_pemberian' => now()->format('H:i:s'),
-            'keterangan' => "Pemberian pakan via {$sumber}"
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim!",
-            'data' => $feedingRecord
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Error sendPakan: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
-        ], 500);
     }
-}
     
     /**
      * Get jadwal berdasarkan jam
@@ -281,7 +319,8 @@ private function getTurbidityStatus($turbidity, $rule = null)
     {
         return view('sensor.realtime');
     }
-        /**
+    
+    /**
      * Get feeding recommendation (API endpoint)
      */
     public function getFeedingRecommendation()
@@ -332,7 +371,14 @@ private function getTurbidityStatus($turbidity, $rule = null)
                 }
             }
             
+            // 🔥 FAKTOR KOREKSI BERDASARKAN CUACA (Sumenep - Nambakor)
+            $weather = $this->weatherService->getWeatherSumenep();
+            if ($weather['success'] && isset($weather['feed_recommendation'])) {
+                $faktorKoreksi *= (1 + ($weather['feed_recommendation']['adjustment'] / 100));
+            }
+            
             $rekomendasiGram = round($estimasiGram * $faktorKoreksi, 0);
+            $rekomendasiGram = max($rekomendasiGram, 100); // Minimal 100 gram
             $rekomendasiKg = round($rekomendasiGram / 1000, 2);
             
             return response()->json([
@@ -342,7 +388,9 @@ private function getTurbidityStatus($turbidity, $rule = null)
                     'pakan_rekomendasi_kg' => $rekomendasiKg,
                     'biomassa_kg' => $biomassaKg,
                     'feeding_rate' => $feedingRate * 100,
-                    'faktor_koreksi' => $faktorKoreksi
+                    'faktor_koreksi' => round($faktorKoreksi, 2),
+                    'cuaca' => $weather['cuaca'] ?? 'Cerah',
+                    'rekomendasi_cuaca' => $weather['feed_recommendation']['message'] ?? 'Normal'
                 ]
             ]);
             
@@ -367,44 +415,125 @@ private function getTurbidityStatus($turbidity, $rule = null)
             'total_gram' => $totalKg * 1000
         ]);
     }
+    
+    /**
+     * Send feed command (API endpoint) - alternative method
+     */
     public function sendFeedCommand(Request $request)
-{
-    try {
-        $pakanGram = $request->input('target_gram');
-        $jadwal = $request->input('jadwal', 'sore');
-        $sumber = $request->input('sumber', 'manual');
-        
-        if (!$pakanGram || $pakanGram <= 0) {
+    {
+        try {
+            $pakanGram = $request->input('target_gram');
+            $jadwal = $request->input('jadwal', 'sore');
+            $sumber = $request->input('sumber', 'manual');
+            
+            if (!$pakanGram || $pakanGram <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah pakan tidak valid'
+                ]);
+            }
+            
+            $pakanKg = round($pakanGram / 1000, 2);
+            
+            // Simpan ke database
+            $record = \App\Models\FeedingRecord::create([
+                'pakan_kg' => $pakanKg,
+                'target_gram' => $pakanGram,
+                'jadwal' => $jadwal,
+                'sumber' => $sumber,
+                'status' => 'success',
+                'waktu_pemberian' => now()->format('H:i:s'),
+                'keterangan' => "Pemberian pakan via {$sumber}"
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim!",
+                'data' => $record
+            ]);
+            
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Jumlah pakan tidak valid'
+                'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ========== 🔥 WEATHER METHODS (Sumenep - Nambakor) ==========
+
+    /**
+     * Get weather data for Sumenep (Nambakor) - API endpoint
+     */
+    public function getWeatherData()
+    {
+        try {
+            $weather = $this->weatherService->getWeatherSumenep();
+            return response()->json($weather);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data cuaca: ' . $e->getMessage(),
+                'cuaca' => 'Cerah',
+                'suhu' => 28,
+                'intensitas_hujan' => 0
             ]);
         }
-        
-        $pakanKg = round($pakanGram / 1000, 2);
-        
-        // Simpan ke database
-        $record = \App\Models\FeedingRecord::create([
-            'pakan_kg' => $pakanKg,
-            'target_gram' => $pakanGram,
-            'jadwal' => $jadwal,
-            'sumber' => $sumber,
-            'status' => 'success',
-            'waktu_pemberian' => now()->format('H:i:s'),
-            'keterangan' => "Pemberian pakan via {$sumber}"
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => "✅ Pakan {$pakanGram} gram ({$pakanKg} kg) berhasil dikirim!",
-            'data' => $record
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal mengirim pakan: ' . $e->getMessage()
-        ], 500);
     }
-}
+
+    /**
+     * Get weather forecast for Sumenep (Nambakor) - API endpoint
+     */
+    public function getWeatherForecast()
+    {
+        try {
+            $forecast = $this->weatherService->getForecast(5);
+            return response()->json([
+                'success' => true,
+                'data' => $forecast
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil forecast cuaca: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Clear weather cache
+     */
+    public function clearWeatherCache()
+    {
+        try {
+            $this->weatherService->clearCache();
+            return response()->json([
+                'success' => true,
+                'message' => 'Cache cuaca berhasil dibersihkan'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membersihkan cache: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check weather API status
+     */
+    public function checkWeatherApiStatus()
+    {
+        $isValid = $this->weatherService->isApiKeyValid();
+        
+        return response()->json([
+            'success' => $isValid,
+            'message' => $isValid ? 'API Key valid' : 'API Key tidak valid atau tidak terkonfigurasi',
+            'location' => 'Nambakor, Sumenep',
+            'coordinates' => [
+                'lat' => -7.0087,
+                'lon' => 113.8662
+            ]
+        ]);
+    }
 }
