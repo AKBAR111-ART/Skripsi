@@ -356,6 +356,8 @@ function updateGauge(id, value, maxValue) {
 // ==================== UPDATE PH - FINAL VERSION ====================
 let phMovingBuffer = [];
 
+// ==================== UPDATE PH ====================
+// ==================== UPDATE PH ====================
 function updatePH(ph, status) {
     const phText = document.getElementById('phText');
     const phStatus = document.getElementById('phStatus');
@@ -364,54 +366,39 @@ function updatePH(ph, status) {
     if (isNaN(phValue)) phValue = 7.0;
     phValue = Math.min(Math.max(phValue, 0), 14);
     
-    // Moving average 3 data
-    phMovingBuffer.push(phValue);
-    if (phMovingBuffer.length > 3) phMovingBuffer.shift();
+    if (phText) phText.innerHTML = phValue.toFixed(2);
     
-    let sum = 0;
-    for (let i = 0; i < phMovingBuffer.length; i++) sum += phMovingBuffer[i];
-    let smoothValue = sum / phMovingBuffer.length;
-    
-    // Update teks
-    if (phText) phText.innerHTML = smoothValue.toFixed(2);
-    
-    // Update status badge
     if (phStatus) {
         const statusText = status || 'normal';
         phStatus.innerHTML = capitalize(statusText);
         phStatus.className = `status-badge ${getStatusClass(statusText)}`;
     }
     
-    // Update gauge
     if (charts['phGauge']) {
-        updateGauge('phGauge', smoothValue, 14);
+        updateGauge('phGauge', phValue, 14);
     }
 }
 
+// ==================== UPDATE TURBIDITY ====================
 // ==================== UPDATE TURBIDITY ====================
 function updateTurbidity(turbidity, status) {
     const turbText = document.getElementById('turbText');
     const turbStatus = document.getElementById('turbStatus');
     
     let turbValue = parseFloat(turbidity || 0);
-    
-    // Validasi range
     if (turbValue < 0) turbValue = 0;
     if (turbValue > 1000) turbValue = 1000;
     
-    // Update teks
     if (turbText) {
         turbText.innerHTML = Math.round(turbValue) + ' NTU';
     }
     
-    // Update status badge
     if (turbStatus) {
         const statusText = status || 'normal';
         turbStatus.innerHTML = capitalize(statusText);
         turbStatus.className = `status-badge ${getStatusClass(statusText)}`;
     }
     
-    // Update gauge (max 100 NTU untuk tampilan)
     let displayValue = Math.min(turbValue, 100);
     if (charts['turbGauge']) {
         updateGauge('turbGauge', displayValue, 100);
@@ -438,13 +425,9 @@ async function loadRealtime() {
         const data = await response.json();
         console.log("Realtime data received:", data);
         
-        if (!data || typeof data.ph === 'undefined') {
-            console.error("Invalid data format:", data);
-            return;
-        }
-        
-        updatePH(data.ph, data.ph_status || 'normal');
-        updateTurbidity(data.turbidity, data.turbidity_status || 'normal');
+        // 🔥 PASTIKAN PARAMETERNYA BENAR
+        updatePH(data.ph, data.ph_status);  // ← ph_status = "peringatan"
+        updateTurbidity(data.turbidity, data.turbidity_status);
         updateTopBar(data);
         updateLineChart('chartPh', parseFloat(data.ph));
         updateLineChart('chartTurb', parseFloat(data.turbidity));
@@ -475,7 +458,7 @@ function updateAlertBox(data) {
 
 async function updateStatusKondisiTambak() {
     try {
-        const response = await fetch('/sensor/realtime');
+        const response = await fetch('/api/realtime'); 
         const data = await response.json();
         
         let statusText = '';
@@ -516,7 +499,6 @@ async function updateStatusKondisiTambak() {
 }
 
 // ==================== LOAD ESTIMASI PAKAN ====================
-// ==================== LOAD ESTIMASI PAKAN (DIPERBAIKI) ====================
 async function loadEstimasiPakan() {
     console.log("🔄 Loading estimasi pakan...");
     
@@ -617,6 +599,24 @@ function loadLatestProfileData() {
         .catch(error => console.error('Error loading profile data:', error));
 }
 
+// ==================== TAMBAHAN BARU: LOAD TODAY FEEDING ====================
+async function loadTodayFeeding() {
+    try {
+        const response = await fetch('/api/production-variables');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const topFeed = document.getElementById('topFeed');
+            if (topFeed && result.data.total_pakan_harian_kg !== undefined) {
+                topFeed.innerHTML = `${result.data.total_pakan_harian_kg} <span>kg</span>`;
+                console.log("✅ Data pakan hari ini diupdate:", result.data.total_pakan_harian_kg, "kg");
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error loading today feeding:", error);
+    }
+}
+
 // Kirim Pakan Otomatis
 async function kirimPakan() {
     const feedValueElement = document.getElementById('feedValue');
@@ -659,6 +659,7 @@ async function kirimPakan() {
         
         if (result.success) {
             showToast(result.message, "success");
+            // Panggil fungsi loadTodayFeeding yang sudah kita tambahkan
             setTimeout(() => {
                 loadTodayFeeding();
                 loadEstimasiPakan();
@@ -748,9 +749,10 @@ async function sendEdit() {
             input.value = '';
             closeEdit();
             
+            // Panggil fungsi loadTodayFeeding yang sudah kita tambahkan
             setTimeout(() => {
-                if (typeof loadTodayFeeding === 'function') loadTodayFeeding();
-                if (typeof loadEstimasiPakan === 'function') loadEstimasiPakan();
+                loadTodayFeeding();
+                loadEstimasiPakan();
             }, 500);
         } else {
             showToast(result.message || "❌ Gagal mengirim pakan", "error");
@@ -771,9 +773,19 @@ function openEdit() { document.getElementById('editModal').classList.add('show')
 function closeEdit() { document.getElementById('editModal').classList.remove('show'); }
 
 // Helper
+// ==================== HELPER FUNCTIONS ====================
 function capitalize(str) {
     if (!str) return 'Normal';
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    const map = {
+        'baik': 'Normal',
+        'aman': 'Normal',
+        'normal': 'Normal',
+        'peringatan': 'Peringatan',
+        'warning': 'Peringatan',
+        'bahaya': 'Bahaya',
+        'danger': 'Bahaya'
+    };
+    return map[str.toLowerCase()] || 'Normal';
 }
 
 function getStatusClass(status) {
@@ -796,7 +808,90 @@ function showToast(message, type) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
 }
-
+// ==================== LOAD ESTIMASI PAKAN V2 (MENGGUNAKAN TRAIT) ====================
+async function loadEstimasiPakanV2() {
+    console.log("🔄 Loading estimasi pakan V2...");
+    
+    try {
+        const response = await fetch('/api/feeding/recommendation-v2');
+        const data = await response.json();
+        
+        console.log("Response API Estimasi Pakan V2:", data);
+        
+        const feedValue = document.getElementById('feedValue');
+        const feedBox = document.querySelector('.feed-box');
+        
+        if (data.success && data.data) {
+            // Ambil nilai rekomendasi dari V2
+            let rekomendasi = data.data.pakan_rekomendasi_kg || 0;
+            let pakanDasar = data.data.pakan_dasar_kg || 0;
+            let biomassa = data.data.biomassa_kg || 0;
+            let feedingRate = data.data.feeding_rate || 0;
+            let faktorAir = data.data.faktor_air || 1;
+            let faktorCuaca = data.data.faktor_cuaca || 1;
+            let status = data.data.status_keseluruhan || 'normal';
+            let keterangan = data.data.keterangan || '';
+            
+            // Update display
+            if (feedValue) {
+                feedValue.innerHTML = rekomendasi + ' kg';
+                
+                // Update warna sesuai status
+                if (status === 'bahaya') {
+                    feedValue.style.color = '#dc2626';
+                } else if (status === 'peringatan') {
+                    feedValue.style.color = '#f59e0b';
+                } else {
+                    feedValue.style.color = '#10b981';
+                }
+            }
+            
+            // Update status air
+            const statusAir = document.getElementById('statusAir');
+            if (statusAir) {
+                if (status === 'bahaya') {
+                    statusAir.innerHTML = '🔴 Bahaya';
+                    statusAir.style.color = '#dc2626';
+                } else if (status === 'peringatan') {
+                    statusAir.innerHTML = '⚠️ Peringatan';
+                    statusAir.style.color = '#f59e0b';
+                } else {
+                    statusAir.innerHTML = '✅ Normal';
+                    statusAir.style.color = '#10b981';
+                }
+            }
+            
+            // Update biomassa display
+            const biomassaDisplay = document.getElementById('biomassaDisplay');
+            if (biomassaDisplay) {
+                biomassaDisplay.innerHTML = biomassa + ' kg';
+            }
+            
+            // Update atau buat detail di feed box
+            let detailDiv = document.getElementById('feedDetail');
+            if (!detailDiv && feedBox) {
+                detailDiv = document.createElement('div');
+                detailDiv.id = 'feedDetail';
+                detailDiv.style.cssText = 'font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 8px;';
+                feedBox.appendChild(detailDiv);
+            }
+            
+            if (detailDiv) {
+                detailDiv.innerHTML = `📊 Dasar: ${pakanDasar} kg | Rate: ${feedingRate}% | Air: ${Math.round(faktorAir*100)}% | Cuaca: ${Math.round(faktorCuaca*100)}%`;
+            }
+            
+            console.log("✅ Estimasi pakan V2 diupdate:", rekomendasi, "kg | Status:", status);
+            
+        } else {
+            if (feedValue) feedValue.innerHTML = '0.5 kg';
+            console.log("Data tidak lengkap:", data);
+        }
+    } catch (error) {
+        console.error("Error loading estimasi V2:", error);
+        const feedValue = document.getElementById('feedValue');
+        if (feedValue) feedValue.innerHTML = '0.5 kg';
+    }
+}
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", function() {
     setTimeout(() => { 
@@ -806,7 +901,8 @@ document.addEventListener("DOMContentLoaded", function() {
         loadProductionData();
     }, 100);
     
-    loadEstimasiPakan();
+    // 🔥 GANTI DENGAN V2
+    loadEstimasiPakanV2(); // <-- GANTI INI
     loadWeeklyFeedChart(); 
     updateAkumulasiPakanHariIni();
     loadFeedingHistory();
@@ -816,7 +912,9 @@ document.addEventListener("DOMContentLoaded", function() {
     setInterval(loadRealtime, 3000);
     setInterval(loadCuaca, 30000);
     setInterval(loadProductionData, 30000);
-    setInterval(loadEstimasiPakan, 10000);
+    
+    // 🔥 SET INTERVAL UNTUK V2
+    setInterval(loadEstimasiPakanV2, 10000); // <-- GANTI INI
     setInterval(loadWeeklyFeedChart, 60000);
     setInterval(updateAkumulasiPakanHariIni, 10000);
     setInterval(loadFeedingHistory, 30000);

@@ -396,49 +396,50 @@
     // ==================== LOAD REALTIME DATA ====================
     async function loadRealtimeData() {
         try {
-            const response = await fetch('/api/sensor/realtime');
+            // 🔥 PAKAI ENDPOINT /api/realtime (BUKAN /api/sensor/realtime)
+            const response = await fetch('/api/realtime');
             const data = await response.json();
             
             if (data.success !== false) {
-                currentPh = data.ph;
-                currentTurbidity = data.turbidity;
-                
-                // Update pH
+                // Update teks pH
                 const phElement = document.getElementById('qualityPh');
-                const phStatusElement = document.getElementById('qualityPhStatus');
                 if (phElement) phElement.innerText = data.ph.toFixed(2);
-                if (phStatusElement) {
+
+                // Update status pH
+                const phStatusElement = document.getElementById('qualityPhStatus');
+                if (phStatusElement && data.ph_status) {
                     phStatusElement.innerText = capitalize(data.ph_status);
                     phStatusElement.className = 'quality-status ' + getStatusClass(data.ph_status);
                 }
-                
-                // Update Turbidity
+
+                // Update teks Turbidity
                 const turbElement = document.getElementById('qualityTurb');
-                const turbStatusElement = document.getElementById('qualityTurbStatus');
                 if (turbElement) turbElement.innerText = data.turbidity + ' NTU';
-                if (turbStatusElement) {
+
+                // Update status Turbidity
+                const turbStatusElement = document.getElementById('qualityTurbStatus');
+                if (turbStatusElement && data.turbidity_status) {
                     turbStatusElement.innerText = capitalize(data.turbidity_status);
                     turbStatusElement.className = 'quality-status ' + getStatusClass(data.turbidity_status);
                 }
-                
-                // Update info kalibrasi
+
+                // Update Info Offset
                 const phCalibInfo = document.getElementById('phCalibInfo');
-                if (phCalibInfo && data.ph_offset !== undefined && data.ph_offset != 0) {
-                    phCalibInfo.innerHTML = `🔧 Offset: ${data.ph_offset > 0 ? '+' : ''}${data.ph_offset}`;
+                if (phCalibInfo && data.ph_offset != 0) {
+                    phCalibInfo.innerHTML = '🔧 Offset: ' + (data.ph_offset > 0 ? '+' : '') + data.ph_offset;
                 } else if (phCalibInfo) {
                     phCalibInfo.innerHTML = '';
                 }
                 
                 const turbCalibInfo = document.getElementById('turbCalibInfo');
-                if (turbCalibInfo && data.turbidity_offset !== undefined && data.turbidity_offset != 0) {
-                    turbCalibInfo.innerHTML = `🔧 Offset: ${data.turbidity_offset > 0 ? '+' : ''}${data.turbidity_offset}`;
+                if (turbCalibInfo && data.turbidity_offset != 0) {
+                    turbCalibInfo.innerHTML = '🔧 Offset: ' + (data.turbidity_offset > 0 ? '+' : '') + data.turbidity_offset;
                 } else if (turbCalibInfo) {
                     turbCalibInfo.innerHTML = '';
                 }
             }
         } catch (error) {
             console.error('Error loading realtime data:', error);
-            setDefaultValues();
         }
     }
     
@@ -452,7 +453,7 @@
                 const statusDiv = document.getElementById('calibrationStatus');
                 if (statusDiv) {
                     if (data.ph_offset != 0 || data.turbidity_offset != 0) {
-                        statusDiv.innerHTML = `✅ Terkalibrasi (pH: ${data.ph_offset > 0 ? '+' : ''}${data.ph_offset}, Turbidity: ${data.turbidity_offset > 0 ? '+' : ''}${data.turbidity_offset})`;
+                        statusDiv.innerHTML = '✅ Terkalibrasi (pH: ' + (data.ph_offset > 0 ? '+' : '') + data.ph_offset + ', Turbidity: ' + (data.turbidity_offset > 0 ? '+' : '') + data.turbidity_offset + ')';
                         statusDiv.style.color = '#10b981';
                         statusDiv.style.background = '#d1fae5';
                     } else {
@@ -480,7 +481,8 @@
     
     async function loadCurrentValuesForModal() {
         try {
-            const response = await fetch('/api/sensor/realtime');
+            // 🔥 PAKAI ENDPOINT /api/realtime (BUKAN /api/sensor/realtime)
+            const response = await fetch('/api/realtime');
             const data = await response.json();
             
             if (data.success !== false) {
@@ -576,13 +578,13 @@
     }
     
     // ==================== RESET KALIBRASI ====================
-    async function resetAllCalibrationConfirm() {
-        if (!confirm('⚠️ Yakin akan mereset semua kalibrasi? Nilai offset akan menjadi 0.')) {
+    function resetAllCalibrationConfirm() {
+        if (!confirm('⚠️ Apakah Anda yakin ingin mereset semua kalibrasi? Nilai offset akan kembali ke 0.')) {
             return;
         }
-        await resetAllCalibration();
+        resetAllCalibration();
     }
-    
+
     async function resetAllCalibration() {
         try {
             const response = await fetch('/api/calibration/reset', {
@@ -598,14 +600,14 @@
             
             if (result.success) {
                 showToast(result.message, 'success');
-                loadOffsetStatus();
                 loadRealtimeData();
+                loadCalibrationStatus();
             } else {
-                showToast('Gagal: ' + result.message, 'error');
+                showToast('Gagal reset: ' + result.message, 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
-            showToast('Gagal reset kalibrasi', 'error');
+            console.error('Error reset kalibrasi:', error);
+            showToast('❌ Terjadi kesalahan saat reset', 'error');
         }
     }
     
@@ -655,16 +657,29 @@
     // ==================== HELPER FUNCTIONS ====================
     function capitalize(str) {
         if (!str) return 'Normal';
-        return str.charAt(0).toUpperCase() + str.slice(1);
+        const map = {
+            'baik': 'Normal',
+            'aman': 'Normal',
+            'normal': 'Normal',
+            'peringatan': 'Peringatan',
+            'warning': 'Peringatan',
+            'bahaya': 'Bahaya',
+            'danger': 'Bahaya'
+        };
+        return map[str.toLowerCase()] || 'Normal';
     }
     
     function getStatusClass(status) {
-        const statusMap = {
-            'baik': 'normal', 'good': 'normal', 'normal': 'normal',
-            'aman': 'normal', 'peringatan': 'warning', 'warning': 'warning',
-            'bahaya': 'danger', 'danger': 'danger'
+        const map = { 
+            'baik': 'normal',
+            'aman': 'normal', 
+            'normal': 'normal',
+            'peringatan': 'warning',
+            'warning': 'warning',
+            'bahaya': 'danger',
+            'danger': 'danger'
         };
-        return statusMap[status?.toLowerCase()] || 'normal';
+        return map[status?.toLowerCase()] || 'normal';
     }
     
     function setDefaultValues() {
@@ -691,8 +706,8 @@
         
         toast = document.createElement('div');
         toast.id = 'dynamicToast';
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<div>${type === 'success' ? '✅' : '❌'} ${message}</div>`;
+        toast.className = 'toast ' + type;
+        toast.innerHTML = '<div>' + (type === 'success' ? '✅' : '❌') + ' ' + message + '</div>';
         document.body.appendChild(toast);
         
         setTimeout(() => {
@@ -704,7 +719,7 @@
     // Close modal on outside click
     window.onclick = function(event) {
         const modals = ['editModal', 'budidayaModal', 'kalibrasiModal'];
-        modals.forEach(modalId => {
+        modals.forEach(function(modalId) {
             const modal = document.getElementById(modalId);
             if (event.target === modal) {
                 modal.style.display = 'none';
@@ -713,5 +728,59 @@
     }
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const profileForm = document.querySelector('form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    return fetch('/api/update-session-profile', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                }
+                throw new Error('Gagal update profile');
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('✅ Profile berhasil diupdate', 'success');
+                    sessionStorage.setItem('profile_updated', 'true');
+                    setTimeout(function() {
+                        window.location.href = '/';
+                    }, 1000);
+                }
+            })
+            .catch(function(error) {
+                showToast('❌ ' + error.message, 'error');
+            });
+        });
+    }
+});
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.innerHTML = '<div class="toast-content"><span>' + (type === 'success' ? '✅' : '❌') + '</span><span>' + message + '</span></div>';
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
+}
+</script>
 <?php $__env->stopSection(); ?>
 <?php echo $__env->make('footbar.utama', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\Skirpsi\tambak_udang\resources\views/dashboard/profile.blade.php ENDPATH**/ ?>

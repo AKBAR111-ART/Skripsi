@@ -120,7 +120,7 @@
             <i class="fas fa-sliders-h"></i>
             <span>Setting</span>
         </a>
-        <a href="{{ route('profile.index') }}" class="{{ request()->routeIs('profile.index') ? 'active' : '' }}">
+        <a href="{{ url('/profile') }}" class="{{ request()->routeIs('profile.index') ? 'active' : '' }}">
             <i class="fas fa-user"></i>
             <span>Profile</span>
         </a>

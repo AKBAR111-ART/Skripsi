@@ -288,13 +288,47 @@ window.onclick = function(event) {
 }
 // ==================== KALIBRASI SENSOR ====================
 
-// Modal kalibrasi pH
-// ==================== KALIBRASI SENSOR ====================
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-// ==================== KALIBRASI SENSOR ====================
-
-// Pastikan CSRF token ada
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+// ==================== KALIBRASI TURBIDITY ====================
+function kalibrasiTurbidity() {
+    console.log("Kalibrasi Turbidity diklik");
+    
+    fetch('/api/realtime')
+        .then(response => response.json())
+        .then(data => {
+            const currentTurb = data.turbidity;
+            const desiredTurb = 30;
+            
+            if (confirm(`📊 Kalibrasi Turbidity\n\nNilai Turbidity saat ini: ${currentTurb} NTU\nNilai yang diinginkan: ${desiredTurb} NTU\n\nLanjutkan kalibrasi?`)) {
+                fetch('/api/calibration/turbidity-offset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        offset: parseFloat((desiredTurb - currentTurb).toFixed(0))
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showToast(result.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Gagal kalibrasi turbidity', 'error');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Gagal mengambil data sensor', 'error');
+        });
+}
 
 // ==================== KALIBRASI SENSOR ====================
 
@@ -454,6 +488,7 @@ function kalibrasiTurbidity() {
 }
 
 // Reset kalibrasi
+// ==================== RESET KALIBRASI ====================
 function resetCalibration(type) {
     const message = `⚠️ Reset Kalibrasi ${type.toUpperCase()}\n\n` +
         `Tindakan ini akan mengembalikan nilai kalibrasi ke default.\n` +
@@ -485,12 +520,12 @@ function resetCalibration(type) {
 }
 
 // Cek status kalibrasi dan noice
+// ==================== CEK STATUS KALIBRASI ====================
 function checkCalibrationStatus() {
     fetch('/api/calibration/status')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update tampilan status kalibrasi
                 const calibStatus = document.getElementById('calibrationStatus');
                 if (calibStatus) {
                     if (data.is_calibrated) {
@@ -502,16 +537,8 @@ function checkCalibrationStatus() {
                     }
                 }
                 
-                // Tampilkan notifikasi jika noice tinggi
                 if (data.noise_warning) {
                     showToast(data.noise_warning, 'warning');
-                    
-                    // Tambahkan class warning pada card kualitas air
-                    const qualityCard = document.querySelector('.quality-card');
-                    if (qualityCard && data.noise_level === 'tinggi') {
-                        qualityCard.style.border = '2px solid #ef4444';
-                        qualityCard.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.3)';
-                    }
                 }
             }
         })
@@ -519,7 +546,8 @@ function checkCalibrationStatus() {
 }
 
 // Panggil cek status saat halaman dimuat
+// ==================== PANGGIL CEK STATUS SAAT HALAMAN DIMUAT ====================
 document.addEventListener('DOMContentLoaded', function() {
     checkCalibrationStatus();
-    setInterval(checkCalibrationStatus, 60000); // Cek setiap 1 menit
+    setInterval(checkCalibrationStatus, 60000);
 });

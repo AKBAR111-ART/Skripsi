@@ -332,11 +332,22 @@ class SensorController extends Controller
             $ph = $validated['ph'] ?? null;
             $turbidity = $validated['turbidity'] ?? null;
             
+            // 🔥 AMBIL OFFSET DARI DATABASE
+            $calib = DB::table('sensor_calibration')->first();
+            $offset_ph = $calib->ph_offset ?? 0;
+            $offset_turb = $calib->turbidity_offset ?? 0;
+            
+            // 🔥 TERAPKAN OFFSET: Nilai Akhir = Nilai Mentah + Offset
+            $final_ph = $ph + $offset_ph;
+            $final_turbidity = $turbidity + $offset_turb;
+            $final_ph = max(0, min(14, $final_ph));
+            $final_turbidity = max(0, min(1000, $final_turbidity));
+            
             $rule = $this->getRuleFromCache();
+            $statusPh = $this->getPhStatus($final_ph, $rule);
+            $statusTurbidity = $this->getTurbidityStatus($final_turbidity, $rule);
             
-            $statusPh = $this->getPhStatus($ph, $rule);
-            $statusTurbidity = $this->getTurbidityStatus($turbidity, $rule);
-            
+            // 🔥 SIMPAN KE BUFFER DENGAN NILAI MENTAH (untuk history)
             $this->addToBuffer([
                 'ph' => $ph,
                 'status_ph' => $statusPh,
@@ -346,6 +357,7 @@ class SensorController extends Controller
                 'updated_at' => now(),
             ]);
             
+            // 🔥 UPDATE REALTIME DENGAN NILAI TERKALIBRASI
             $this->updateRealtime($ph, $statusPh, $turbidity, $statusTurbidity);
             
             $profile = TambakProfile::first();
@@ -359,7 +371,7 @@ class SensorController extends Controller
             
             $rekomendasiData = [];
             if ($profile && $ph && $turbidity) {
-                $rekomendasiData = $this->hitungRekomendasiPakanTerintegrasi($ph, $turbidity, $profile, $weatherData);
+                $rekomendasiData = $this->hitungRekomendasiPakanTerintegrasi($final_ph, $final_turbidity, $profile, $weatherData);
             }
             
             if ($profile) {
@@ -374,8 +386,8 @@ class SensorController extends Controller
             }
             
             $this->cekDanKirimNotifikasi(
-                $ph, 
-                $turbidity, 
+                $final_ph, 
+                $final_turbidity, 
                 $statusPh, 
                 $statusTurbidity, 
                 $cuaca, 
@@ -387,9 +399,13 @@ class SensorController extends Controller
                 'success' => true,
                 'message' => 'Data sensor diterima',
                 'data' => [
-                    'ph' => $ph,
+                    'ph_raw' => $ph,
+                    'ph_offset' => $offset_ph,
+                    'ph' => round($final_ph, 2),
                     'ph_status' => $statusPh,
-                    'turbidity' => $turbidity,
+                    'turbidity_raw' => $turbidity,
+                    'turbidity_offset' => $offset_turb,
+                    'turbidity' => round($final_turbidity, 0),
                     'turbidity_status' => $statusTurbidity,
                     'populasi' => $profile->populasi ?? null,
                     'avg_weight' => $profile->avg_weight ?? null,
@@ -531,19 +547,31 @@ class SensorController extends Controller
     
     private function getPhStatus($ph, $rule = null)
     {
-        if (!$rule) return 'aman';
-        
-        if ($ph < $rule->ph_danger_low || $ph > $rule->ph_danger_high) {
-            Log::info("pH {$ph} is BAHAYA");
-            return 'bahaya';
+        if (!$rule) {
+            $rule = $this->getRuleFromCache();
         }
         
-        if ($ph < $rule->ph_min_good || $ph > $rule->ph_max_good) {
-            Log::info("pH {$ph} is PERINGATAN");
-            return 'peringatan';
+        if ($rule) {
+            if ($ph < $rule->ph_danger_low || $ph > $rule->ph_danger_high) {
+                Log::info("pH {$ph} is BAHAYA");
+                return 'bahaya';
+            }
+            
+            if (($ph >= $rule->ph_min_warning && $ph <= $rule->ph_max_warning) || 
+                ($ph >= $rule->ph_min_warning_high && $ph <= $rule->ph_max_warning_high)) {
+                Log::info("pH {$ph} is PERINGATAN");
+                return 'peringatan';
+            }
+            
+            if ($ph >= $rule->ph_min_good && $ph <= $rule->ph_max_good) {
+                Log::info("pH {$ph} is AMAN");
+                return 'aman';
+            }
         }
         
-        Log::info("pH {$ph} is AMAN");
+        // Default rule
+        if ($ph < 6.5 || $ph > 9.0) return 'bahaya';
+        if ($ph < 7.0 || $ph > 8.5) return 'peringatan';
         return 'aman';
     }
     
@@ -557,28 +585,33 @@ class SensorController extends Controller
         }
         
         if (!$rule) {
-            if ($turbidity > 100) return 'bahaya';
-            if ($turbidity > 50) return 'peringatan';
-            return 'baik';
+            $rule = $this->getRuleFromCache();
         }
         
-        if ($turbidity > $rule->turbidity_danger_high) {
-            Log::info("Turbidity {$turbidity} is BAHAYA");
-            return 'bahaya';
+        if ($rule) {
+            if ($turbidity <= $rule->turbidity_danger_low || $turbidity >= $rule->turbidity_danger_high) {
+                Log::info("Turbidity {$turbidity} is BAHAYA");
+                return 'bahaya';
+            }
+            
+            if ($turbidity >= $rule->turbidity_min_warning && $turbidity <= $rule->turbidity_max_warning) {
+                Log::info("Turbidity {$turbidity} is PERINGATAN");
+                return 'peringatan';
+            }
+            
+            if ($turbidity >= $rule->turbidity_min_good && $turbidity <= $rule->turbidity_max_good) {
+                return 'baik';
+            }
         }
         
-        if ($turbidity > $rule->turbidity_max_good) {
-            Log::info("Turbidity {$turbidity} is PERINGATAN");
-            return 'peringatan';
-        }
-        
+        // Default rule
+        if ($turbidity < 10 || $turbidity > 70) return 'bahaya';
+        if ($turbidity > 50) return 'peringatan';
         return 'baik';
     }
     
     private function getRuleFromCache()
     {
-        Cache::forget('sensor_rule');
-        
         return Cache::remember('sensor_rule', 600, function () {
             $rule = RuleSensor::first();
             Log::info('Rule loaded from database');
@@ -587,48 +620,43 @@ class SensorController extends Controller
     }
     
     /**
-     * REALTIME - DENGAN KALIBRASI
+     * REALTIME - DENGAN KALIBRASI DAN STATUS
      */
     public function realtime()
     {
-        $cached = Cache::get('sensor_realtime_display');
-        if ($cached) {
-            return response()->json($cached);
-        }
-        
+        // 1. Ambil data dari sensor_realtime (SUDAH TERKALIBRASI)
         $sensor = DB::table('sensor_realtime')->first();
-        $rule = RuleSensor::first();
         
         if (!$sensor) {
             return response()->json([
+                'success' => true,
                 'ph' => 7.0,
-                'ph_status' => 'aman',
+                'ph_status' => 'normal',
                 'turbidity' => 30,
-                'turbidity_status' => 'aman'
+                'turbidity_status' => 'normal',
+                'last_update' => now()
             ]);
         }
         
-        $calibratedPh = SensorCalibration::getCalibratedValue($sensor->ph ?? 7, 'ph');
-        $calibratedTurbidity = SensorCalibration::getCalibratedValue($sensor->turbidity ?? 30, 'turbidity');
+        // 2. Ambil offset untuk info
+        $calib = DB::table('sensor_calibration')->first();
+        $offset_ph = $calib->ph_offset ?? 0;
+        $offset_turb = $calib->turbidity_offset ?? 0;
         
-        $phStatus = $this->getPhStatus($calibratedPh, $rule);
-        $turbidityStatus = $this->getTurbidityStatus($calibratedTurbidity, $rule);
-        
-        $calibration = SensorCalibration::getCalibration();
+        // 3. Hitung raw value (Nilai Akhir - Offset)
+        $raw_ph = $sensor->ph - $offset_ph;
+        $raw_turbidity = $sensor->turbidity - $offset_turb;
         
         return response()->json([
             'success' => true,
-            'ph' => (float)$calibratedPh,
-            'ph_raw' => (float)$sensor->ph,
-            'ph_status' => $phStatus,
-            'ph_offset' => (float)$calibration->ph_offset,
-            'turbidity' => (float)$calibratedTurbidity,
-            'turbidity_raw' => (float)$sensor->turbidity,
-            'turbidity_status' => $turbidityStatus,
-            'turbidity_offset' => (float)$calibration->turbidity_offset,
-            'is_calibrated' => $calibration->is_calibrated,
-            'noise_level' => $calibration->noise_level,
-            'last_calibration' => $calibration->last_calibration,
+            'ph' => (float)$sensor->ph,
+            'ph_status' => $sensor->ph_status ?? 'normal',
+            'ph_raw' => round($raw_ph, 2),
+            'ph_offset' => $offset_ph,
+            'turbidity' => (float)$sensor->turbidity,
+            'turbidity_status' => $sensor->turbidity_status ?? 'normal',
+            'turbidity_raw' => round($raw_turbidity, 0),
+            'turbidity_offset' => $offset_turb,
             'last_update' => $sensor->updated_at ?? $sensor->created_at
         ]);
     }
@@ -671,23 +699,42 @@ class SensorController extends Controller
     
     private function updateRealtime($ph, $statusPh, $turbidity, $statusTurbidity)
     {
+        // 🔥 AMBIL OFFSET DARI DATABASE
+        $calib = DB::table('sensor_calibration')->first();
+        $offset_ph = $calib->ph_offset ?? 0;
+        $offset_turb = $calib->turbidity_offset ?? 0;
+        
+        // 🔥 TERAPKAN OFFSET: Nilai Akhir = Nilai Mentah + Offset
+        $final_ph = $ph + $offset_ph;
+        $final_turbidity = $turbidity + $offset_turb;
+        
+        // Batasi range
+        $final_ph = max(0, min(14, $final_ph));
+        $final_turbidity = max(0, min(1000, $final_turbidity));
+        
+        // 🔥 AMBIL RULE DAN HITUNG STATUS
+        $rule = $this->getRuleFromCache();
+        $phStatus = $this->getPhStatus($final_ph, $rule);
+        $turbidityStatus = $this->getTurbidityStatus($final_turbidity, $rule);
+        
         $exists = DB::table('sensor_realtime')->exists();
         
         if ($exists) {
+            // 🔥 UPDATE DENGAN NILAI YANG SUDAH DIKALIBRASI
             DB::table('sensor_realtime')->update([
-                'ph' => $ph,
-                'ph_status' => $statusPh,
-                'turbidity' => $turbidity,
-                'turbidity_status' => $statusTurbidity,
+                'ph' => round($final_ph, 2),
+                'ph_status' => $phStatus,
+                'turbidity' => round($final_turbidity, 0),
+                'turbidity_status' => $turbidityStatus,
                 'updated_at' => now()
             ]);
         } else {
             DB::table('sensor_realtime')->insert([
                 'id' => 1,
-                'ph' => $ph,
-                'ph_status' => $statusPh,
-                'turbidity' => $turbidity,
-                'turbidity_status' => $statusTurbidity,
+                'ph' => round($final_ph, 2),
+                'ph_status' => $phStatus,
+                'turbidity' => round($final_turbidity, 0),
+                'turbidity_status' => $turbidityStatus,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -695,10 +742,10 @@ class SensorController extends Controller
         
         Cache::put('sensor_realtime_display', [
             'success' => true,
-            'ph' => (float)$ph,
-            'ph_status' => $statusPh,
-            'turbidity' => (float)$turbidity,
-            'turbidity_status' => $statusTurbidity,
+            'ph' => round($final_ph, 2),
+            'ph_status' => $phStatus,
+            'turbidity' => round($final_turbidity, 0),
+            'turbidity_status' => $turbidityStatus,
             'last_update' => now()
         ], now()->addSeconds(5));
     }
@@ -1153,7 +1200,7 @@ class SensorController extends Controller
         };
     }
     
-    // ==================== KALIBRASI OFFSET MANUAL (TAMBAHAN BARU) ====================
+    // ==================== KALIBRASI OFFSET MANUAL ====================
     
     /**
      * Set offset pH manual
@@ -1226,22 +1273,22 @@ class SensorController extends Controller
     public function resetCalibrationOffset(Request $request)
     {
         try {
-            $type = $request->type ?? 'all';
-            $calibratedBy = $request->ip() ?? 'API';
-            
-            SensorCalibration::resetCalibration($type, $calibratedBy);
-            
-            $this->updateRealtimeWithCalibration();
-            
+            $type = $request->input('type', 'all');
+
+            SensorCalibration::resetCalibration($type);
+
+            Cache::forget('sensor_calibration_data');
+            Cache::forget('sensor_realtime_display');
+
             return response()->json([
                 'success' => true,
-                'message' => "✅ Kalibrasi {$type} berhasil direset"
+                'message' => "✅ Offset berhasil direset ke 0"
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal reset kalibrasi: ' . $e->getMessage()
+                'message' => 'Gagal reset: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1251,19 +1298,34 @@ class SensorController extends Controller
      */
     private function updateRealtimeWithCalibration()
     {
+        // 🔥 Ambil data terakhir dari tabel sensors (history)
         $sensor = DB::table('sensors')->latest()->first();
         
         if ($sensor) {
-            $calibratedPh = SensorCalibration::getCalibratedValue($sensor->ph, 'ph');
-            $calibratedTurbidity = SensorCalibration::getCalibratedValue($sensor->turbidity, 'turbidity');
+            // 🔥 Ambil offset dari sensor_calibration
+            $calib = DB::table('sensor_calibration')->first();
+            $offset_ph = $calib->ph_offset ?? 0;
+            $offset_turb = $calib->turbidity_offset ?? 0;
+            
+            // 🔥 Terapkan offset ke data mentah
+            $calibratedPh = ($sensor->ph ?? 7.0) + $offset_ph;
+            $calibratedTurbidity = ($sensor->turbidity ?? 30) + $offset_turb;
+            
+            $calibratedPh = max(0, min(14, $calibratedPh));
+            $calibratedTurbidity = max(0, min(1000, $calibratedTurbidity));
+            
+            // 🔥 Ambil rule dan hitung status
+            $rule = $this->getRuleFromCache();
+            $phStatus = $this->getPhStatus($calibratedPh, $rule);
+            $turbidityStatus = $this->getTurbidityStatus($calibratedTurbidity, $rule);
             
             DB::table('sensor_realtime')->updateOrInsert(
                 ['id' => 1],
                 [
-                    'ph' => $calibratedPh,
-                    'turbidity' => $calibratedTurbidity,
-                    'ph_status' => $sensor->status_ph ?? 'aman',
-                    'turbidity_status' => $sensor->status_turbidity ?? 'baik',
+                    'ph' => round($calibratedPh, 2),
+                    'turbidity' => round($calibratedTurbidity, 0),
+                    'ph_status' => $phStatus,
+                    'turbidity_status' => $turbidityStatus,
                     'updated_at' => now()
                 ]
             );

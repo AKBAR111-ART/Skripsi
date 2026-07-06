@@ -6,10 +6,10 @@
         <small style="font-size: 10px; opacity: 0.7;">{{ session('user_email', '') }}</small>
     </div>
     <div class="profile-panel-menu">
-        <a href="{{ route('profile.index') }}">
-            <i class="fas fa-fish"></i>
-            <span>Profil Tambak</span>
-        </a>
+       <a href="{{ url('/profile') }}">
+    <i class="fas fa-fish"></i>
+    <span>Profil Tambak</span>
+</a>
         <a href="{{ route('pengaturan.index') }}">
             <i class="fas fa-sliders-h"></i>
             <span>Pengaturan</span>

@@ -216,7 +216,7 @@ class MonitoringController extends Controller
         }
         
         // Hapus data lama untuk hari ini
-        Sensor5MinAvg::whereDate('date', Carbon::today())->delete();
+      //  Sensor5MinAvg::whereDate('date', Carbon::today())->delete();
         
         // Parameter berdasarkan umur budidaya
         // Semakin tua umur, pH cenderung turun, kekeruhan naik
@@ -273,7 +273,7 @@ class MonitoringController extends Controller
         }
         
         // Hapus data lama untuk hari ini
-        FeedingRecord::whereDate('created_at', Carbon::today())->delete();
+      //  FeedingRecord::whereDate('created_at', Carbon::today())->delete();
         
         // Hitung kebutuhan pakan berdasarkan umur (gram per ekor per hari)
         $pakanPerEkor = $this->getPakanByUmur($umurBudidaya);
@@ -559,7 +559,7 @@ class MonitoringController extends Controller
     public function generateDummyData()
     {
         // Hapus data hari ini
-        MonitoringData::whereDate('recorded_at', Carbon::today())->delete();
+        //MonitoringData::whereDate('recorded_at', Carbon::today())->delete();
         
         // Generate data setiap 2 jam
         $hours = [6, 8, 10, 12, 14, 16, 18, 20];

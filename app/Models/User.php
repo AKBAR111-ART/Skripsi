@@ -5,25 +5,29 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Carbon\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
+    protected $table = 'users';
+    
     protected $fillable = [
         'name',
         'email',
-        'phone',
         'password',
-        'tambak_name',
-        'lokasi_tambak',
-        'populasi',
-        'berat_rata',
-        'target_panen_kg',
-        'target_size_gram',
-        'tebar_date',
-        'is_active',
+        'phone',           // nomor HP (kolom phone)
+        'no_hp',           // nomor HP (kolom no_hp) - biarkan juga untuk kompatibilitas
+        'tambak_name',     // nama tambak
+        'lokasi_tambak',   // lokasi tambak
+        'populasi',        // jumlah populasi udang
+        'berat_rata',      // berat rata-rata udang
+        'target_panen_kg', // target panen
+        'target_size_gram',// target size
+        'tebar_date',      // tanggal tebar
+        'role',
+        'is_verified',
     ];
 
     protected $hidden = [
@@ -31,24 +35,21 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // Hitung umur budidaya dalam minggu
-    public function getUmurMingguAttribute()
-    {
-        if (!$this->tebar_date) return 0;
-        return Carbon::parse($this->tebar_date)->diffInWeeks(Carbon::now());
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'is_verified' => 'boolean',
+        'populasi' => 'integer',
+        'berat_rata' => 'float',
+        'target_panen_kg' => 'float',
+        'target_size_gram' => 'float',
+        'tebar_date' => 'date',
+    ];
 
-    // Hitung biomassa (kg)
-    public function getBiomassaAttribute()
+    /**
+     * Relasi ke tambak_profile (one to one)
+     */
+    public function tambakProfile()
     {
-        return ($this->populasi * $this->berat_rata) / 1000;
-    }
-
-    // Allow login using phone or email
-    public function findForLogin($username)
-    {
-        return $this->where('phone', $username)
-                    ->orWhere('email', $username)
-                    ->first();
+        return $this->hasOne(TambakProfile::class, 'user_id');
     }
 }

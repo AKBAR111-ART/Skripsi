@@ -14,20 +14,32 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
     $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
-})
-->withMiddleware(function (Middleware $middleware) {
-    $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
-})
-->withMiddleware(function (Middleware $middleware) {
     $middleware->alias([
-        'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
+        'session.auth' => \App\Http\Middleware\SessionAuth::class,
     ]);
+    $middleware->redirectGuestsTo('/login');
+    // $middleware->redirectUsersTo('/dashboard');
 })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
+    })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->append(\App\Http\Middleware\ApiKeyMiddleware::class);
+    })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            // 'auth.custom' => \App\Http\Middleware\AuthMiddleware::class, // DIHAPUS
+        ]);
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
+    })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectGuestsTo('/login');
+        // $middleware->redirectUsersTo('/dashboard');
     })
     ->withSchedule(function (Schedule $schedule) {
         

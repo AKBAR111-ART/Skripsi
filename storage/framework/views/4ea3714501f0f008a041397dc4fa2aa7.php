@@ -120,7 +120,7 @@
             <i class="fas fa-sliders-h"></i>
             <span>Setting</span>
         </a>
-        <a href="<?php echo e(route('profile.index')); ?>" class="<?php echo e(request()->routeIs('profile.index') ? 'active' : ''); ?>">
+        <a href="<?php echo e(url('/profile')); ?>" class="<?php echo e(request()->routeIs('profile.index') ? 'active' : ''); ?>">
             <i class="fas fa-user"></i>
             <span>Profile</span>
         </a>

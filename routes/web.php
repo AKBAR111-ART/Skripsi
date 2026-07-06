@@ -10,34 +10,87 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\FeedingHistoryController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\PengingatJadwalController;
+// routes/web.php
 
+
+
+
+
+// Route untuk menyimpan offset pH
+Route::post('/api/calibration/ph-offset', [SensorController::class, 'setPHOffset']);
+
+// Route untuk menyimpan offset Turbidity
+Route::post('/api/calibration/turbidity-offset', [SensorController::class, 'setTurbidityOffset']);
+
+// Route untuk reset kalibrasi
+Route::post('/api/calibration/reset', [SensorController::class, 'resetCalibrationOffset']);
+
+// Route untuk mengecek status kalibrasi (digunakan saat modal dibuka)
+Route::get('/api/calibration/status', [SensorController::class, 'getCalibrationStatus']);
+
+Route::post('/api/update-session-profile', [HomeController::class, 'updateSessionProfile'])->name('api.update.session.profile');
+Route::get('/api/profile/latest', [HomeController::class, 'getLatestProfileData'])->name('api.profile.latest');
 /*
 |--------------------------------------------------------------------------
 | WEB ROUTES (TAMBAK UDANG)
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\DashboardController;
-
-
-// ========== AUTHENTICATION ROUTES ==========
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-Route::get('/logout', [LoginController::class, 'logout']);
-
-Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('password.request');
-Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
-
-// ========== DASHBOARD (Protected) ==========
-Route::middleware('auth.custom')->group(function () {
-    Route::get('/dashboard/home', [DashboardController::class, 'home'])->name('home');
+// ========================================================================
+//                         TEST ROUTE
+// ========================================================================
+Route::get('/simple-profile', function () {
+    return "Simple profile - routing works! User: " . (Auth::user()->name ?? 'guest');
+})->middleware('auth');
+Route::get('/coba', function () {
+    return "INI TES - Jika muncul teks ini, routing bekerja!";
 });
 
-// ... route Anda yang lain tetap di sini ...
+
+// ========================================================================
+//                         REDIRECT ROOT - LANGSUNG KE LOGIN
+// ========================================================================
+
+Route::get('/', function () {
+    if (session()->has('user_id')) {
+        session()->flush();
+    }
+    return redirect('/login');
+});
+
+// ========================================================================
+//                         REGISTRASI & OTP RESET PASSWORD
+// ========================================================================
+
+// Halaman registrasi
+Route::get('/register', function () {
+    return view('auth.register');
+})->name('register');
+
+// Proses registrasi
+Route::post('/register', [AuthController::class, 'doRegister']);
+
+// Halaman forgot password (OTP)
+Route::get('/forgot-password', function () {
+    return view('auth.forgot-password');
+})->name('forgot-password');
+
+// Proses forgot password (kirim OTP)
+Route::post('/forgot-password', [AuthController::class, 'doForgotPassword']);
+
+// Verifikasi OTP
+Route::get('/verify-otp', [AuthController::class, 'showVerifyOtp']);
+Route::post('/verify-otp', [AuthController::class, 'doVerifyOtp']);
+
+// Reset password dengan OTP
+Route::get('/reset-password', [AuthController::class, 'showResetPassword']);
+Route::post('/reset-password', [AuthController::class, 'doResetPassword']);
+
 // ========================================================================
 //                         AUTHENTICATION ROUTES
 // ========================================================================
@@ -46,49 +99,58 @@ Route::middleware('auth.custom')->group(function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
-    Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
-    Route::get('/reset-password/{id}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
-    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
-// Authenticated routes (wajib login) - Custom Auth Middleware
-Route::middleware('auth.custom')->group(function () {
+// Proses login dengan AuthController (untuk registrasi & OTP)
+Route::post('/login-web', [AuthController::class, 'doLogin'])->name('login.web');
+
+// Logout dengan AuthController
+Route::post('/logout', [AuthController::class, 'doLogout'])->name('logout');
+Route::get('/logout', [LoginController::class, 'logout']);
+
+// ========================================================================
+//                         PROTECTED ROUTES (HARUS LOGIN)
+// ========================================================================
+
+Route::middleware(['session.auth'])->group(function () {
+   Route::get('/test-controller', [ProfileController::class, 'index']);
+    // Dashboard
+    Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+    Route::get('/home', [HomeController::class, 'index']);
+    
+    // PROFILE ROUTES - Menggunakan URL /profile
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/budidaya/start', [ProfileController::class, 'startBudidaya'])->name('budidaya.start');
+    Route::put('/budidaya/reset', [ProfileController::class, 'resetBudidaya'])->name('budidaya.reset');
+    Route::put('/biomassa/update', [ProfileController::class, 'updateBiomassa'])->name('profile.update-biomassa');
+    
+    // Pengaturan
+    Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
+    Route::post('/pengaturan/store', [PengaturanController::class, 'store']);
+    Route::post('/pengaturan/rule', [PengaturanController::class, 'updateRule']);
+    Route::post('/pengaturan/reset', [PengaturanController::class, 'reset']);
+    
+    // Monitoring
+    Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring');
+    
+    // History
+    Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+    Route::get('/history-premium', [HistoryController::class, 'index'])->name('history.premium');
+    
+    // Feeding History
+    Route::get('/feeding/history', [FeedingHistoryController::class, 'index'])->name('feeding.history');
+    
     // Dashboard Home (Login System)
     Route::get('/dashboard/home', [DashboardController::class, 'home'])->name('home');
-    
-    // Logout
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-    Route::get('/logout', [LoginController::class, 'logout']);
 });
-
-// ========================================================================
-//                         REDIRECT ROOT
-// ========================================================================
-
-Route::get('/', function () {
-    if (session()->has('user_id')) {
-        return redirect('/dashboard/home');
-    }
-    return redirect('/login');
-});
-
-// ========================================================================
-//                         PROFILE ROUTES
-// ========================================================================
-
-Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
-Route::put('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
 
 // ========================================================================
 //                         API ROUTES (SENSOR & KALIBRASI)
 // ========================================================================
 
-Route::get('/api/realtime', [ProfileController::class, 'getRealtimeData']);
-Route::post('/api/calibrate/ph', [ProfileController::class, 'calibratePh']);
-Route::post('/api/calibrate/turbidity', [ProfileController::class, 'calibrateTurbidity']);
-Route::post('/api/calibration/reset', [ProfileController::class, 'resetCalibration']);
-Route::get('/api/calibration/status', [ProfileController::class, 'getCalibrationStatus']);
+Route::get('/api/realtime', [HomeController::class, 'getRealtimeData'])->name('api.realtime');
 Route::get('/sensor/history', [SensorController::class, 'history']);
 
 // ========================================================================
@@ -231,7 +293,6 @@ Route::get('/history2', [HistoryController::class, 'index2'])->name('history.ind
 //                         DASHBOARD & HOME
 // ========================================================================
 
-Route::get('/', [LoginController::class, 'showLoginForm'])->name('login');
 Route::get('/login', [LoginController::class, 'showLoginForm']);
 Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 Route::get('/home', [HomeController::class, 'index']);
@@ -270,12 +331,6 @@ Route::prefix('api/monitoring')->group(function () {
 // ========================================================================
 //                         PROFILE & BUDIDAYA
 // ========================================================================
-
-Route::prefix('profile-tambak')->group(function () {
-    Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
-    Route::put('/update', [ProfileController::class, 'update'])->name('profile.update');
-    Route::put('/biomassa/update', [ProfileController::class, 'updateBiomassa'])->name('profile.update-biomassa');
-});
 
 Route::put('/budidaya/start', [ProfileController::class, 'startBudidaya'])->name('budidaya.start');
 Route::put('/budidaya/reset', [ProfileController::class, 'resetBudidaya'])->name('budidaya.reset');
@@ -355,5 +410,15 @@ Route::get('/test-wa', function () {
     ]);
     return $response->body();
 })->name('test.wa');
+// ========================================================================
+//                         ROUTE V2 (STANDARISASI REKOMENDASI PAKAN)
+// ========================================================================
+
+// Home Controller - V2 (menggunakan Trait FeedingCalculator)
+Route::get('/api/feeding/recommendation-v2', [HomeController::class, 'getFeedingRecommendationV2']);
+
+// Pengaturan Controller - V2 (menggunakan Trait FeedingCalculator)
+Route::get('/api/pengaturan/realtime-sensor-v2', [PengaturanController::class, 'getRealtimeSensorV2']);
+Route::get('/api/pengaturan/feeding-recommendation-v2', [PengaturanController::class, 'getFeedingRecommendationV2']);
 
 Route::get('/akbar', fn() => view('welcome'))->name('welcome');

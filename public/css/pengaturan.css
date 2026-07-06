@@ -593,3 +593,69 @@
     padding: 2px 8px;
     border-radius: 20px;
 }
+/* ==================== SENSOR STATUS CARD ==================== */
+.sensor-status-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.sensor-status-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #94a3b8;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+.sensor-status-header .live-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    animation: pulse-live 2s infinite;
+}
+
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.sensor-status-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sensor-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border-left: 3px solid #667eea;
+}
+
+.sensor-item .sensor-label {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.sensor-item .sensor-value {
+    color: #e2e8f0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.sensor-status-loading {
+    color: #94a3b8;
+    text-align: center;
+    padding: 20px;
+    font-size: 14px;
+}

@@ -11,6 +11,7 @@ use App\Models\SensorRealtime;
 use App\Models\Sensor;
 use App\Models\FeedingRecord;
 use App\Services\WeatherService; // 🔥 Tambahkan WeatherService
+use App\Traits\FeedingCalculator; // 🔥 TAMBAHKAN INI
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
 {
+    use FeedingCalculator; // 🔥 TAMBAHKAN INI
+    
     protected $weatherService;
 
     /**
@@ -85,6 +88,10 @@ class HomeController extends Controller
         // 🔥 AMBIL DATA CUACA DARI WEATHER SERVICE (Sumenep - Nambakor)
         $weather = $this->weatherService->getWeatherSumenep();
         
+        // 🔥 HITUNG REKOMENDASI PAKAN MENGGUNAKAN TRAIT (TAMBAHAN)
+        $sensor = SensorRealtime::first();
+        $feedResult = $this->calculateFeed($profile, $sensor);
+        
         // Data tambak untuk view
         $tambak = [
             'nama' => $profile->nama_tambak ?? 'Tambak Mandhala',
@@ -95,6 +102,7 @@ class HomeController extends Controller
             'umur_minggu' => $umur_minggu
         ];
         
+        // 🔥 TAMBAHKAN feedResult KE COMPACT
         return view('dashboard.home', compact(
             'pakanHariIni', 
             'umur_minggu', 
@@ -104,7 +112,8 @@ class HomeController extends Controller
             'tambak', 
             'populasi',
             'weather',
-            'profileData' // 🔥 Tambahkan profileData ke view
+            'profileData', // 🔥 Tambahkan profileData ke view
+            'feedResult' // 🔥 TAMBAHKAN INI
         ));
     }
     
@@ -322,6 +331,8 @@ class HomeController extends Controller
     
     /**
      * Get feeding recommendation (API endpoint)
+     * 🔥 METHOD INI TETAP ADA DAN TIDAK DIHAPUS
+     * 🔥 SAYA TAMBAHKAN VERSI DENGAN TRAIT DI BAWAHNYA
      */
     public function getFeedingRecommendation()
     {
@@ -392,6 +403,38 @@ class HomeController extends Controller
                     'cuaca' => $weather['cuaca'] ?? 'Cerah',
                     'rekomendasi_cuaca' => $weather['feed_recommendation']['message'] ?? 'Normal'
                 ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔥 TAMBAHAN: Get feeding recommendation using Trait (STANDARISASI)
+     * Method ini KONSISTEN dengan PengaturanController
+     */
+    public function getFeedingRecommendationV2()
+    {
+        try {
+            $profile = TambakProfile::first();
+            $sensor = SensorRealtime::first();
+            
+            // 🔥 PAKAI TRAIT UNTUK PERHITUNGAN STANDAR
+            $result = $this->calculateFeed($profile, $sensor);
+            
+            // Tambahkan data cuaca
+            $weather = $this->weatherService->getWeatherSumenep();
+            
+            return response()->json([
+                'success' => true,
+                'data' => array_merge($result, [
+                    'cuaca' => $weather['cuaca'] ?? 'Cerah',
+                    'rekomendasi_cuaca' => $weather['feed_recommendation']['message'] ?? 'Normal'
+                ])
             ]);
             
         } catch (\Exception $e) {

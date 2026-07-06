@@ -473,7 +473,110 @@ function escapeHtml(text) {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+// ==================== FEEDING RECOMMENDATION V2 ====================
+function fetchFeedingRecommendationV2() {
+    console.log("🔄 Fetching feeding recommendation V2...");
+    
+    fetch('/api/pengaturan/feeding-recommendation-v2')
+        .then(response => response.json())
+        .then(data => {
+            console.log("📦 Response feeding V2:", data);
+            
+            const beratHighlight = document.getElementById('beratHighlight');
+            if (beratHighlight && data.success && data.data) {
+                let rekomendasi = data.data.pakan_rekomendasi_kg || 0;
+                let status = data.data.status_keseluruhan || 'normal';
+                let keterangan = data.data.keterangan || '✅ Kualitas air optimal';
+                
+                beratHighlight.innerHTML = `<span class="value-number">${rekomendasi}</span><span class="value-unit">kg</span>`;
+                
+                const numberSpan = beratHighlight.querySelector('.value-number');
+                if (numberSpan) {
+                    if (status === 'bahaya') {
+                        numberSpan.style.color = '#dc2626';
+                    } else if (status === 'peringatan') {
+                        numberSpan.style.color = '#f59e0b';
+                    } else {
+                        numberSpan.style.color = 'white';
+                    }
+                }
+                
+                // Update recommendation status text
+                const recommendationStatus = document.getElementById('recommendationStatus');
+                if (recommendationStatus) {
+                    recommendationStatus.innerHTML = keterangan;
+                    if (status === 'bahaya') {
+                        recommendationStatus.style.color = '#dc2626';
+                    } else if (status === 'peringatan') {
+                        recommendationStatus.style.color = '#f59e0b';
+                    } else {
+                        recommendationStatus.style.color = '#10b981';
+                    }
+                }
+            } else {
+                console.error("❌ Invalid response structure:", data);
+                const beratHighlight = document.getElementById('beratHighlight');
+                if (beratHighlight) {
+                    beratHighlight.innerHTML = `<span class="value-number">0.5</span><span class="value-unit">kg</span>`;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error fetching feeding recommendation V2:', error);
+            const beratHighlight = document.getElementById('beratHighlight');
+            if (beratHighlight) {
+                beratHighlight.innerHTML = `<span class="value-number">0.5</span><span class="value-unit">kg</span>`;
+            }
+        });
+}
 
+// ==================== LOAD REALTIME SENSOR V2 ====================
+async function loadRealtimeSensorV2() {
+    try {
+        const response = await fetch('/api/pengaturan/realtime-sensor-v2');
+        const data = await response.json();
+        
+        if (data.success) {
+            const statusBox = document.getElementById('statusBox');
+            if (statusBox) {
+                // Tampilkan data dengan status
+                let phColor = data.ph_status === 'Bahaya' ? '#dc2626' : (data.ph_status === 'Peringatan' ? '#f59e0b' : '#10b981');
+                let turColor = data.turbidity_status === 'Bahaya' ? '#dc2626' : (data.turbidity_status === 'Peringatan' ? '#f59e0b' : '#10b981');
+                
+                statusBox.innerHTML = `
+                    <div class="sensor-item">
+                        <span class="sensor-label">📊 Status Air:</span>
+                        <span class="sensor-value" style="color: ${data.ph_status === 'Bahaya' || data.turbidity_status === 'Bahaya' ? '#dc2626' : '#10b981'}">
+                            ${data.ph_status === 'Bahaya' || data.turbidity_status === 'Bahaya' ? '⚠️ Bahaya' : (data.ph_status === 'Peringatan' || data.turbidity_status === 'Peringatan' ? '⚡ Peringatan' : '✅ Normal')}
+                        </span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">🧪 pH:</span>
+                        <span class="sensor-value" style="color: ${phColor}">${data.ph || '--'} (${data.ph_status || 'Normal'})</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">💧 Kekeruhan:</span>
+                        <span class="sensor-value" style="color: ${turColor}">${data.turbidity || '--'} NTU (${data.turbidity_status || 'Normal'})</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">🦐 Rekomendasi Pakan:</span>
+                        <span class="sensor-value" style="font-weight: bold; color: #667eea;">${data.rekomendasi_kg || 0} kg</span>
+                    </div>
+                    <div class="sensor-item">
+                        <span class="sensor-label">🕐 Last update:</span>
+                        <span class="sensor-value">${data.last_update || '-'}</span>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading sensor V2:', error);
+        const statusBox = document.getElementById('statusBox');
+        if (statusBox) {
+            statusBox.innerHTML = '<div class="sensor-status-loading">❌ Gagal memuat data sensor</div>';
+        }
+    }
+}
 // ==================== AUTO UPDATE ====================
 document.addEventListener("input", function(e) {
     if (e.target.id === "ph_danger_low" || e.target.id === "ph_danger_high" || e.target.id === "tur_danger_low" || e.target.id === "tur_danger_high") {
@@ -501,12 +604,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initSavePengaturan();
     initResetForm();
     loadJadwalList();
-    loadRealtimeSensor();
-    fetchFeedingRecommendation();
+    
+    // 🔥 GANTI DENGAN V2
+    loadRealtimeSensorV2(); // <-- GANTI INI
+    fetchFeedingRecommendationV2(); // <-- GANTI INI
     
     // Set intervals for auto refresh
-    setInterval(loadRealtimeSensor, 5000);
-    setInterval(fetchFeedingRecommendation, 10000);
+    setInterval(loadRealtimeSensorV2, 5000); // <-- GANTI INI
+    setInterval(fetchFeedingRecommendationV2, 10000); // <-- GANTI INI
     setInterval(loadJadwalList, 30000);
     
     // Initial check
@@ -542,9 +647,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Export functions to global scope
+// ==================== EXPORT FUNCTIONS TO GLOBAL SCOPE ====================
 window.addJadwal = addJadwal;
 window.deleteJadwal = deleteJadwal;
 window.closeDataAlert = closeDataAlert;
 window.updatePreview = updatePreview;
 window.fetchFeedingRecommendation = fetchFeedingRecommendation;
+window.fetchFeedingRecommendationV2 = fetchFeedingRecommendationV2;
+window.loadRealtimeSensorV2 = loadRealtimeSensorV2;

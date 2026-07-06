@@ -10,6 +10,7 @@ class TambakProfile extends Model
     protected $table = 'tambak_profile';
     
     protected $fillable = [
+        'user_id',
         'nama_tambak',
         'lokasi',
         'luas',
@@ -43,6 +44,14 @@ class TambakProfile extends Model
         'last_calibration_ph' => 'datetime',
         'last_calibration_turbidity' => 'datetime',
     ];
+    
+    /**
+     * Relasi ke user (inverse)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
     
     /**
      * Hitung umur budidaya (DOC - Day of Culture) dalam hari
